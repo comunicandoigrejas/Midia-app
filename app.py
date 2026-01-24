@@ -2,15 +2,17 @@ import streamlit as st
 from openai import OpenAI
 
 # 1. Configuração da Página
-st.set_page_config(page_title="Gerador de Mídia - ISOSED", page_icon="📱", layout="centered")
+st.set_page_config(page_title="Acesso Restrito - Grupo Shekiná", page_icon="🛡️", layout="centered")
 
-# --- SISTEMA DE LOGIN E SEGURANÇA ---
+# ==========================================
+# SISTEMA DE LOGIN E SEGURANÇA
+# ==========================================
 def check_password():
     """Retorna `True` se a senha estiver correta."""
     def password_entered():
         if st.session_state["password"] == st.secrets["APP_PASSWORD"]:
             st.session_state["password_correct"] = True
-            del st.session_state["password"] 
+            del st.session_state["password"]
         else:
             st.session_state["password_correct"] = False
 
@@ -23,17 +25,29 @@ def check_password():
     # ==========================================
     # TELA DE LOGIN (VISÍVEL PARA TODOS)
     # ==========================================
-    st.title("🔒 Acesso Restrito - ISOSED")
-    st.markdown("Por favor, insira a senha do departamento de mídia para continuar.")
-    st.text_input("Senha:", type="password", on_change=password_entered, key="password")
     
+    # --- 1. BOTÃO NO TOPO DA PÁGINA PRINCIPAL ---
+    st.link_button("🔧 By Comunicando Igrejas", "https://www.instagram.com/comunicandoigrejas/")
+    # st.divider() # Linha divisória opcional
+
+    # --- 2. CONTEÚDO DA BARRA LATERAL ---
+    with st.sidebar:
+        st.title("🎸 Grupo Shekiná")
+        st.header("MIDIA ISOSED COSMOPOLIS")
+
+    # --- CONTEÚDO PRINCIPAL DA TELA DE LOGIN ---
+    st.title("🛡️ Acesso Restrito")
+    st.info("Bem-vindo ao sistema do Grupo Shekiná. Por favor, identifique-se.")
+
+    st.text_input("Senha de Acesso:", type="password", on_change=password_entered, key="password")
+
     if "password_correct" in st.session_state and not st.session_state["password_correct"]:
         st.error("❌ Senha incorreta. Tente novamente.")
-    
-    # --- BOTÃO DO SEU INSTAGRAM (ANTES DO LOGIN) ---
-    st.divider() # Cria uma linha divisória visual
-    st.link_button("🔧 By Comunicando Igrejas", "https://www.instagram.com/comunicandoigrejas/")
-    
+
+    # O botão "Acessar Sistema" não é estritamente necessário com `on_change`, 
+    # mas pode ser adicionado se preferir um clique explícito.
+    # st.button("Acessar Sistema", on_click=password_entered)
+
     return False
 
 # --- SE O LOGIN FOR SUCESSO, MOSTRA O APP ---
@@ -44,7 +58,7 @@ if check_password():
 
     # 3. Identidade Teológica da Igreja
     identidade_igreja = """
-    IDENTIDADE: Você é o Social Media de uma Igreja Evangélica Pentecostal (ISOSED). 
+    IDENTIDADE: Você é o Social Media de uma Igreja Evangélica Pentecostal (ISOSED).
     REGRA DA BÍBLIA: Usar EXCLUSIVAMENTE João Ferreira de Almeida Revista e Atualizada (ARA) 2ª Edição (SBB).
     """
 
@@ -97,7 +111,7 @@ if check_password():
                     st.markdown(res.choices[0].message.content)
             else:
                 st.warning("⚠️ Digite um tema para os Stories.")
-                
-    # Mantendo o botão do Instagram visível também depois que a pessoa logar (no rodapé)
+
+    # Mantendo o botão também no rodapé após o login
     st.divider()
     st.link_button("🔧 By Comunicando Igrejas", "https://www.instagram.com/comunicandoigrejas/")
