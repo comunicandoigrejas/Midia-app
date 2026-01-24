@@ -58,13 +58,13 @@ if check_password():
 
     client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
-    # --- IDENTIDADE COM FOCO EM EMOJIS E DETALHAMENTO ---
+    # --- IDENTIDADE ATUALIZADA: FOCO NO VERSÍCULO FORNECIDO ---
     identidade_igreja = """
     IDENTIDADE: Você é o Social Media de uma Igreja Evangélica Pentecostal (ISOSED).
     REGRA DA BÍBLIA: Usar EXCLUSIVAMENTE João Ferreira de Almeida Revista e Atualizada (ARA) 2ª Edição (SBB).
-    DIRETRIZ DE CONTEÚDO: As legendas devem ser ricas em informações, detalhadas e profundas. 
-    TAMANHO MÍNIMO: Cada legenda deve ter no MÍNIMO 30 palavras.
-    DINAMISMO: SEMPRE adicione emojis variados e pertinentes ao contexto bíblico e pentecostal (como 🔥, 🙏, 📖, ✨, ⛪) ao longo de todo o texto para torná-lo visualmente atraente e dinâmico.
+    DIRETRIZ DE CONTEÚDO: As legendas devem ser profundas e informativas (mínimo 30 palavras).
+    FOCO NA PALAVRA: O usuário fornecerá um versículo bíblico. Você deve obrigatoriamente basear toda a reflexão e a "palavra" da legenda nesse versículo específico, trazendo uma mensagem conectada a ele.
+    DINAMISMO: Use emojis variados (🔥, 🙏, 📖, ✨) para tornar o texto atraente.
     """
 
     st.title("📱 Gerador de Conteúdo ISOSED")
@@ -75,18 +75,22 @@ if check_password():
     # --- FERRAMENTA 1: FEED ---
     with aba_feed:
         st.header("Gerador de Legendas")
+        
+        # Campo para o Versículo (Novo!)
+        versiculo_base = st.text_input("📖 Versículo Base (Ex: João 3:16)", placeholder="Digite o versículo que será o foco da legenda...")
+        
         col1, col2 = st.columns(2)
         with col1:
             plataforma = st.selectbox("Rede Social", ("Instagram", "Facebook", "YouTube"))
             tom_de_voz = st.selectbox("Tom de Voz", ("Pentecostal/Fervoroso", "Inspirador", "Acolhedor", "Jovem", "Evangelístico"))
         with col2:
-            tema_feed = st.text_area("Tema do Post", placeholder="Ex: Culto da Família...")
-            instrucoes = st.text_input("Direcionamento Extra", placeholder="Ex: foco no avivamento...")
+            tema_feed = st.text_area("Tema do Post", placeholder="Ex: Culto de Domingo, Noite de Avivamento...")
+            instrucoes = st.text_input("Direcionamento Extra", placeholder="Ex: Fazer convite para o culto às 19h...")
         
         if st.button("✨ Gerar Legenda ARA"):
-            if tema_feed:
-                with st.spinner('Escrevendo legenda dinâmica...'):
-                    prompt_f = f"{identidade_igreja} Crie uma legenda informativa e dinâmica para {plataforma} com mais de 30 palavras e uso generoso de emojis. Tema: {tema_feed}. Tom: {tom_de_voz}. Obs: {instrucoes}. Use estrutura AIDA."
+            if tema_feed and versiculo_base:
+                with st.spinner('Extraindo a palavra do versículo...'):
+                    prompt_f = f"{identidade_igreja} \nVERSÍCULO FORNECIDO: {versiculo_base}. \nCrie uma legenda detalhada para {plataforma} baseada neste versículo. Tema: {tema_feed}. Tom: {tom_de_voz}. Obs: {instrucoes}. Use estrutura AIDA e muitos emojis."
                     res = client.chat.completions.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": prompt_f}])
                     texto = res.choices[0].message.content
                     st.code(texto, language=None)
@@ -94,18 +98,18 @@ if check_password():
                     link_wa = f"https://wa.me/?text={urllib.parse.quote(texto)}"
                     st.link_button("📲 Enviar para o WhatsApp", link_wa)
             else:
-                st.warning("Digite um tema.")
+                st.warning("⚠️ Por favor, preencha o Tema e o Versículo Base.")
 
     # --- FERRAMENTA 2: STORIES ---
     with aba_stories:
         st.header("Roteiro para Stories")
+        versiculo_st = st.text_input("📖 Versículo para os Stories", placeholder="João 3:16...")
         tema_st = st.text_area("Tema dos Stories", placeholder="Ex: Bom dia com fé...")
         
         if st.button("💡 Gerar Sequência"):
-            if tema_st:
-                with st.spinner('Criando roteiro...'):
-                    # Stories também ganham emojis para facilitar a leitura rápida
-                    prompt_s = f"{identidade_igreja} Crie 3 stories dinâmicos com emojis para Instagram sobre: {tema_st}. Story 1: Gancho. Story 2: Versículo ARA. Story 3: Interação."
+            if tema_st and versiculo_st:
+                with st.spinner('Criando roteiro bíblico...'):
+                    prompt_s = f"{identidade_igreja} \nVERSÍCULO FORNECIDO: {versiculo_st}. \nCrie 3 stories dinâmicos baseados nesse versículo. Story 1: Gancho. Story 2: O versículo ARA explicado. Story 3: Interação."
                     res = client.chat.completions.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": prompt_s}])
                     texto_s = res.choices[0].message.content
                     st.markdown(texto_s)
@@ -113,4 +117,4 @@ if check_password():
                     link_wa_s = f"https://wa.me/?text={urllib.parse.quote(texto_s)}"
                     st.link_button("📲 Enviar para o WhatsApp", link_wa_s)
             else:
-                st.warning("Digite um tema.")
+                st.warning("⚠️ Preencha o Tema e o Versículo.")
