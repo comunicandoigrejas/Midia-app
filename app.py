@@ -1,5 +1,6 @@
 import streamlit as st
 from openai import OpenAI
+import urllib.parse  # Biblioteca necessária para formatar o texto para o link do WhatsApp
 
 # 1. Configuração da Página
 st.set_page_config(page_title="Mídia ISOSED", page_icon="📱", layout="centered")
@@ -26,9 +27,13 @@ def check_password():
     # TELA DE LOGIN (VISÍVEL PARA TODOS)
     # ==========================================
     
-    # --- BARRA LATERAL (TEXTO E SEU BOTÃO) ---
+    # --- BARRA LATERAL (TEXTO, INSTAGRAM IGREJA E SEU BOTÃO) ---
     with st.sidebar:
         st.title("📱 Midia ISOSED Cosmópolis")
+        # Botão direto para o Instagram da Igreja
+        st.link_button("⛪ Acessar Instagram ISOSED", "https://www.instagram.com/isosedcosmopolissp/")
+        st.divider()
+        # Seu botão de assinatura
         st.link_button("🔧 By Comunicando Igrejas", "https://www.instagram.com/comunicandoigrejas/")
 
     # --- CONTEÚDO PRINCIPAL DA TELA DE LOGIN ---
@@ -44,6 +49,13 @@ def check_password():
 
 # --- SE O LOGIN FOR SUCESSO, MOSTRA O APP ---
 if check_password():
+
+    # Repete a barra lateral para quem já fez login
+    with st.sidebar:
+        st.title("📱 Midia ISOSED Cosmópolis")
+        st.link_button("⛪ Acessar Instagram ISOSED", "https://www.instagram.com/isosedcosmopolissp/")
+        st.divider()
+        st.link_button("🔧 By Comunicando Igrejas", "https://www.instagram.com/comunicandoigrejas/")
 
     # 2. Conexão com a IA
     client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
@@ -80,8 +92,19 @@ if check_password():
                 with st.spinner('Escrevendo legenda... ⏳'):
                     prompt_f = f"{identidade_igreja} Crie uma legenda para {plataforma}. Tema: {tema_feed}. Tom: {tom_de_voz}. Obs: {instrucoes}. Use estrutura AIDA."
                     res = client.chat.completions.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": prompt_f}])
+                    
+                    # Pega o texto gerado
+                    texto_legenda = res.choices[0].message.content
+                    
                     st.subheader("Sua Legenda:")
-                    st.code(res.choices[0].message.content, language=None)
+                    st.code(texto_legenda, language=None)
+                    
+                    # Cria o link dinâmico para o WhatsApp
+                    texto_codificado = urllib.parse.quote(texto_legenda)
+                    link_whatsapp = f"https://wa.me/?text={texto_codificado}"
+                    
+                    st.link_button("📲 Enviar legenda direto para o WhatsApp", link_whatsapp)
+
             else:
                 st.warning("⚠️ Digite um tema para gerar a legenda.")
 
@@ -99,7 +122,18 @@ if check_password():
                 with st.spinner('Criando sequência... ⏳'):
                     prompt_s = f"{identidade_igreja} Crie 3 stories para Instagram sobre: {tema_st}. Story 1: Gancho de impacto. Story 2: Versículo ARA exato. Story 3: Interação."
                     res = client.chat.completions.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": prompt_s}])
+                    
+                    # Pega o texto gerado
+                    texto_stories = res.choices[0].message.content
+                    
                     st.subheader("Roteiro:")
-                    st.markdown(res.choices[0].message.content)
+                    st.markdown(texto_stories)
+                    
+                    # Cria o link dinâmico para o WhatsApp
+                    texto_codificado_st = urllib.parse.quote(texto_stories)
+                    link_whatsapp_st = f"https://wa.me/?text={texto_codificado_st}"
+                    
+                    st.link_button("📲 Enviar roteiro direto para o WhatsApp", link_whatsapp_st)
+
             else:
                 st.warning("⚠️ Digite um tema para os Stories.")
