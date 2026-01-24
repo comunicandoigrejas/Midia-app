@@ -7,28 +7,32 @@ st.set_page_config(page_title="Gerador de Mídia - ISOSED", page_icon="📱", la
 # --- SISTEMA DE LOGIN E SEGURANÇA ---
 def check_password():
     """Retorna `True` se a senha estiver correta."""
-    # Função para verificar a senha digitada
     def password_entered():
         if st.session_state["password"] == st.secrets["APP_PASSWORD"]:
             st.session_state["password_correct"] = True
-            del st.session_state["password"]  # Apaga a senha da memória por segurança
+            del st.session_state["password"] 
         else:
             st.session_state["password_correct"] = False
 
-    # Se a senha já foi verificada e está correta, libera o app
     if "password_correct" not in st.session_state:
         st.session_state["password_correct"] = False
 
     if st.session_state["password_correct"]:
         return True
 
-    # Tela de Login
+    # ==========================================
+    # TELA DE LOGIN (VISÍVEL PARA TODOS)
+    # ==========================================
     st.title("🔒 Acesso Restrito - ISOSED")
     st.markdown("Por favor, insira a senha do departamento de mídia para continuar.")
     st.text_input("Senha:", type="password", on_change=password_entered, key="password")
     
     if "password_correct" in st.session_state and not st.session_state["password_correct"]:
         st.error("❌ Senha incorreta. Tente novamente.")
+    
+    # --- BOTÃO DO SEU INSTAGRAM (ANTES DO LOGIN) ---
+    st.divider() # Cria uma linha divisória visual
+    st.link_button("🔧 By Comunicando Igrejas", "https://www.instagram.com/comunicandoigrejas/")
     
     return False
 
@@ -38,7 +42,7 @@ if check_password():
     # 2. Conexão com a IA
     client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
-    # 3. Identidade Teológica da Igreja (Regra ARA)
+    # 3. Identidade Teológica da Igreja
     identidade_igreja = """
     IDENTIDADE: Você é o Social Media de uma Igreja Evangélica Pentecostal (ISOSED). 
     REGRA DA BÍBLIA: Usar EXCLUSIVAMENTE João Ferreira de Almeida Revista e Atualizada (ARA) 2ª Edição (SBB).
@@ -68,7 +72,7 @@ if check_password():
         if st.button("✨ Gerar Legenda ARA"):
             if tema_feed:
                 with st.spinner('Escrevendo legenda... ⏳'):
-                    prompt_f = f"{identidade_igreja} Crie uma legenda para {plataforma}. Tema: {tema_feed}. Tom: {tom_de_voz}. Obs: {instrucoes}. Use estrutura AIDA (Atenção, Interesse, Desejo, Ação)."
+                    prompt_f = f"{identidade_igreja} Crie uma legenda para {plataforma}. Tema: {tema_feed}. Tom: {tom_de_voz}. Obs: {instrucoes}. Use estrutura AIDA."
                     res = client.chat.completions.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": prompt_f}])
                     st.subheader("Sua Legenda:")
                     st.code(res.choices[0].message.content, language=None)
@@ -87,9 +91,13 @@ if check_password():
         if st.button("💡 Gerar Sequência de Stories"):
             if tema_st:
                 with st.spinner('Criando sequência... ⏳'):
-                    prompt_s = f"{identidade_igreja} Crie 3 stories para Instagram sobre: {tema_st}. Story 1: Gancho de impacto. Story 2: Versículo ARA exato. Story 3: Interação (Enquete/Caixinha)."
+                    prompt_s = f"{identidade_igreja} Crie 3 stories para Instagram sobre: {tema_st}. Story 1: Gancho de impacto. Story 2: Versículo ARA exato. Story 3: Interação."
                     res = client.chat.completions.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": prompt_s}])
                     st.subheader("Roteiro:")
                     st.markdown(res.choices[0].message.content)
             else:
                 st.warning("⚠️ Digite um tema para os Stories.")
+                
+    # Mantendo o botão do Instagram visível também depois que a pessoa logar (no rodapé)
+    st.divider()
+    st.link_button("🔧 By Comunicando Igrejas", "https://www.instagram.com/comunicandoigrejas/")
