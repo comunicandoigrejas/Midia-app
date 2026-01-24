@@ -1,15 +1,24 @@
 import streamlit as st
 from openai import OpenAI
-import urllib.parse  # Biblioteca necessária para formatar o texto para o link do WhatsApp
+import urllib.parse
 
 # 1. Configuração da Página
 st.set_page_config(page_title="Mídia ISOSED", page_icon="📱", layout="centered")
+
+# --- ESCONDER A BARRA SUPERIOR DO STREAMLIT ---
+hide_st_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            header {visibility: hidden;}
+            footer {visibility: hidden;}
+            </style>
+            """
+st.markdown(hide_st_style, unsafe_allow_html=True)
 
 # ==========================================
 # SISTEMA DE LOGIN E SEGURANÇA
 # ==========================================
 def check_password():
-    """Retorna `True` se a senha estiver correta."""
     def password_entered():
         if st.session_state["password"] == st.secrets["APP_PASSWORD"]:
             st.session_state["password_correct"] = True
@@ -23,44 +32,33 @@ def check_password():
     if st.session_state["password_correct"]:
         return True
 
-    # ==========================================
-    # TELA DE LOGIN (VISÍVEL PARA TODOS)
-    # ==========================================
-    
-    # --- BARRA LATERAL (TEXTO, INSTAGRAM IGREJA E SEU BOTÃO) ---
+    # --- BARRA LATERAL (TEXTO E BOTÕES DE INSTAGRAM) ---
     with st.sidebar:
         st.title("📱 Midia ISOSED Cosmópolis")
-        # Botão direto para o Instagram da Igreja
-        st.link_button("⛪ Acessar Instagram ISOSED", "https://www.instagram.com/isosedcosmopolissp/")
+        st.link_button("⛪ Instagram ISOSED", "https://www.instagram.com/isosedcosmopolissp/")
         st.divider()
-        # Seu botão de assinatura
         st.link_button("🔧 By Comunicando Igrejas", "https://www.instagram.com/comunicandoigrejas/")
 
-    # --- CONTEÚDO PRINCIPAL DA TELA DE LOGIN ---
     st.title("🔒 Acesso Restrito")
-    st.info("Bem-vindo ao sistema do departamento de Mídia. Por favor, identifique-se.")
-
+    st.info("Bem-vindo ao sistema da Mídia ISOSED. Por favor, identifique-se.")
     st.text_input("Senha de Acesso:", type="password", on_change=password_entered, key="password")
 
     if "password_correct" in st.session_state and not st.session_state["password_correct"]:
-        st.error("❌ Senha incorreta. Tente novamente.")
+        st.error("❌ Senha incorreta.")
 
     return False
 
-# --- SE O LOGIN FOR SUCESSO, MOSTRA O APP ---
+# --- SE O LOGIN FOR SUCESSO ---
 if check_password():
 
-    # Repete a barra lateral para quem já fez login
     with st.sidebar:
         st.title("📱 Midia ISOSED Cosmópolis")
-        st.link_button("⛪ Acessar Instagram ISOSED", "https://www.instagram.com/isosedcosmopolissp/")
+        st.link_button("⛪ Instagram ISOSED", "https://www.instagram.com/isosedcosmopolissp/")
         st.divider()
         st.link_button("🔧 By Comunicando Igrejas", "https://www.instagram.com/comunicandoigrejas/")
 
-    # 2. Conexão com a IA
     client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
-    # 3. Identidade Teológica da Igreja
     identidade_igreja = """
     IDENTIDADE: Você é o Social Media de uma Igreja Evangélica Pentecostal (ISOSED).
     REGRA DA BÍBLIA: Usar EXCLUSIVAMENTE João Ferreira de Almeida Revista e Atualizada (ARA) 2ª Edição (SBB).
@@ -68,72 +66,49 @@ if check_password():
 
     st.title("📱 Gerador de Conteúdo ISOSED")
     st.success("✅ Acesso Liberado")
-    st.markdown("Crie legendas e roteiros de stories baseados na Palavra.")
 
-    # 4. Interface das Ferramentas
     aba_feed, aba_stories = st.tabs(["📝 Legendas de Feed", "📱 Ideias para Stories"])
 
-    # ==========================================
-    # FERRAMENTA 1: LEGENDAS DE FEED
-    # ==========================================
+    # --- FERRAMENTA 1: FEED ---
     with aba_feed:
         st.header("Gerador de Legendas")
-        
         col1, col2 = st.columns(2)
         with col1:
             plataforma = st.selectbox("Rede Social", ("Instagram", "Facebook", "YouTube"))
-            tom_de_voz = st.selectbox("Tom de Voz", ("Pentecostal/Fervoroso", "Inspirador", "Jovem", "Evangelístico"))
+            tom_de_voz = st.selectbox("Tom de Voz", ("Pentecostal/Fervoroso", "Inspirador", "Acolhedor", "Jovem", "Evangelístico"))
         with col2:
-            tema_feed = st.text_area("Tema do Post", placeholder="Ex: Culto da Família, Texto base: Salmos 122...")
-            instrucoes = st.text_input("Direcionamento Extra", placeholder="Ex: texto curto, fazer convite...")
+            tema_feed = st.text_area("Tema do Post", placeholder="Ex: Culto da Família...")
+            instrucoes = st.text_input("Direcionamento Extra", placeholder="Ex: texto curto...")
         
         if st.button("✨ Gerar Legenda ARA"):
             if tema_feed:
-                with st.spinner('Escrevendo legenda... ⏳'):
+                with st.spinner('Escrevendo...'):
                     prompt_f = f"{identidade_igreja} Crie uma legenda para {plataforma}. Tema: {tema_feed}. Tom: {tom_de_voz}. Obs: {instrucoes}. Use estrutura AIDA."
                     res = client.chat.completions.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": prompt_f}])
+                    texto = res.choices[0].message.content
+                    st.code(texto, language=None)
                     
-                    # Pega o texto gerado
-                    texto_legenda = res.choices[0].message.content
-                    
-                    st.subheader("Sua Legenda:")
-                    st.code(texto_legenda, language=None)
-                    
-                    # Cria o link dinâmico para o WhatsApp
-                    texto_codificado = urllib.parse.quote(texto_legenda)
-                    link_whatsapp = f"https://wa.me/?text={texto_codificado}"
-                    
-                    st.link_button("📲 Enviar legenda direto para o WhatsApp", link_whatsapp)
-
+                    # Botão WhatsApp
+                    link_wa = f"https://wa.me/?text={urllib.parse.quote(texto)}"
+                    st.link_button("📲 Enviar para o WhatsApp", link_wa)
             else:
-                st.warning("⚠️ Digite um tema para gerar a legenda.")
+                st.warning("Digite um tema.")
 
-    # ==========================================
-    # FERRAMENTA 2: SEQUÊNCIA DE STORIES
-    # ==========================================
+    # --- FERRAMENTA 2: STORIES ---
     with aba_stories:
         st.header("Roteiro para Stories")
-        st.markdown("Gere uma sequência de 3 stories interativos.")
+        tema_st = st.text_area("Tema dos Stories", placeholder="Ex: Bom dia com fé...")
         
-        tema_st = st.text_area("Tema dos Stories", placeholder="Ex: Bom dia com fé / Convite para o culto...")
-        
-        if st.button("💡 Gerar Sequência de Stories"):
+        if st.button("💡 Gerar Sequência"):
             if tema_st:
-                with st.spinner('Criando sequência... ⏳'):
-                    prompt_s = f"{identidade_igreja} Crie 3 stories para Instagram sobre: {tema_st}. Story 1: Gancho de impacto. Story 2: Versículo ARA exato. Story 3: Interação."
+                with st.spinner('Criando...'):
+                    prompt_s = f"{identidade_igreja} Crie 3 stories para Instagram sobre: {tema_st}. Story 1: Gancho. Story 2: Versículo ARA. Story 3: Interação."
                     res = client.chat.completions.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": prompt_s}])
+                    texto_s = res.choices[0].message.content
+                    st.markdown(texto_s)
                     
-                    # Pega o texto gerado
-                    texto_stories = res.choices[0].message.content
-                    
-                    st.subheader("Roteiro:")
-                    st.markdown(texto_stories)
-                    
-                    # Cria o link dinâmico para o WhatsApp
-                    texto_codificado_st = urllib.parse.quote(texto_stories)
-                    link_whatsapp_st = f"https://wa.me/?text={texto_codificado_st}"
-                    
-                    st.link_button("📲 Enviar roteiro direto para o WhatsApp", link_whatsapp_st)
-
+                    # Botão WhatsApp
+                    link_wa_s = f"https://wa.me/?text={urllib.parse.quote(texto_s)}"
+                    st.link_button("📲 Enviar para o WhatsApp", link_wa_s)
             else:
-                st.warning("⚠️ Digite um tema para os Stories.")
+                st.warning("Digite um tema.")
