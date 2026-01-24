@@ -2,7 +2,7 @@ import streamlit as st
 from openai import OpenAI
 
 # 1. Configuração da Página
-st.set_page_config(page_title="Acesso Restrito - Grupo Shekiná", page_icon="🛡️", layout="centered")
+st.set_page_config(page_title="Mídia ISOSED", page_icon="📱", layout="centered")
 
 # ==========================================
 # SISTEMA DE LOGIN E SEGURANÇA
@@ -26,27 +26,19 @@ def check_password():
     # TELA DE LOGIN (VISÍVEL PARA TODOS)
     # ==========================================
     
-    # --- 1. BOTÃO NO TOPO DA PÁGINA PRINCIPAL ---
-    st.link_button("🔧 By Comunicando Igrejas", "https://www.instagram.com/comunicandoigrejas/")
-    # st.divider() # Linha divisória opcional
-
-    # --- 2. CONTEÚDO DA BARRA LATERAL ---
+    # --- BARRA LATERAL (TEXTO E SEU BOTÃO) ---
     with st.sidebar:
-        st.title("🎸 Grupo Shekiná")
-        st.header("MIDIA ISOSED COSMOPOLIS")
+        st.title("📱 Midia ISOSED Cosmópolis")
+        st.link_button("🔧 By Comunicando Igrejas", "https://www.instagram.com/comunicandoigrejas/")
 
     # --- CONTEÚDO PRINCIPAL DA TELA DE LOGIN ---
-    st.title("🛡️ Acesso Restrito")
-    st.info("Bem-vindo ao sistema do Grupo Shekiná. Por favor, identifique-se.")
+    st.title("🔒 Acesso Restrito")
+    st.info("Bem-vindo ao sistema do departamento de Mídia. Por favor, identifique-se.")
 
     st.text_input("Senha de Acesso:", type="password", on_change=password_entered, key="password")
 
     if "password_correct" in st.session_state and not st.session_state["password_correct"]:
         st.error("❌ Senha incorreta. Tente novamente.")
-
-    # O botão "Acessar Sistema" não é estritamente necessário com `on_change`, 
-    # mas pode ser adicionado se preferir um clique explícito.
-    # st.button("Acessar Sistema", on_click=password_entered)
 
     return False
 
@@ -111,7 +103,3 @@ if check_password():
                     st.markdown(res.choices[0].message.content)
             else:
                 st.warning("⚠️ Digite um tema para os Stories.")
-
-    # Mantendo o botão também no rodapé após o login
-    st.divider()
-    st.link_button("🔧 By Comunicando Igrejas", "https://www.instagram.com/comunicandoigrejas/")
