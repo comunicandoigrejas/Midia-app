@@ -32,7 +32,6 @@ def check_password():
     if st.session_state["password_correct"]:
         return True
 
-    # --- BARRA LATERAL (TEXTO E BOTÕES DE INSTAGRAM) ---
     with st.sidebar:
         st.title("📱 Midia ISOSED Cosmópolis")
         st.link_button("⛪ Instagram ISOSED", "https://www.instagram.com/isosedcosmopolissp/")
@@ -59,12 +58,13 @@ if check_password():
 
     client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
-    # --- IDENTIDADE ATUALIZADA COM O NOVO DIRECIONAMENTO ---
+    # --- IDENTIDADE COM FOCO EM EMOJIS E DETALHAMENTO ---
     identidade_igreja = """
     IDENTIDADE: Você é o Social Media de uma Igreja Evangélica Pentecostal (ISOSED).
     REGRA DA BÍBLIA: Usar EXCLUSIVAMENTE João Ferreira de Almeida Revista e Atualizada (ARA) 2ª Edição (SBB).
     DIRETRIZ DE CONTEÚDO: As legendas devem ser ricas em informações, detalhadas e profundas. 
-    TAMANHO MÍNIMO: Cada legenda deve ter no MÍNIMO 30 palavras. Nunca gere textos curtos ou superficiais.
+    TAMANHO MÍNIMO: Cada legenda deve ter no MÍNIMO 30 palavras.
+    DINAMISMO: SEMPRE adicione emojis variados e pertinentes ao contexto bíblico e pentecostal (como 🔥, 🙏, 📖, ✨, ⛪) ao longo de todo o texto para torná-lo visualmente atraente e dinâmico.
     """
 
     st.title("📱 Gerador de Conteúdo ISOSED")
@@ -85,14 +85,12 @@ if check_password():
         
         if st.button("✨ Gerar Legenda ARA"):
             if tema_feed:
-                with st.spinner('Escrevendo legenda detalhada...'):
-                    # Reforço da instrução no prompt final
-                    prompt_f = f"{identidade_igreja} Crie uma legenda informativa para {plataforma} com mais de 30 palavras. Tema: {tema_feed}. Tom: {tom_de_voz}. Obs: {instrucoes}. Use estrutura AIDA."
+                with st.spinner('Escrevendo legenda dinâmica...'):
+                    prompt_f = f"{identidade_igreja} Crie uma legenda informativa e dinâmica para {plataforma} com mais de 30 palavras e uso generoso de emojis. Tema: {tema_feed}. Tom: {tom_de_voz}. Obs: {instrucoes}. Use estrutura AIDA."
                     res = client.chat.completions.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": prompt_f}])
                     texto = res.choices[0].message.content
                     st.code(texto, language=None)
                     
-                    # Botão WhatsApp
                     link_wa = f"https://wa.me/?text={urllib.parse.quote(texto)}"
                     st.link_button("📲 Enviar para o WhatsApp", link_wa)
             else:
@@ -106,12 +104,12 @@ if check_password():
         if st.button("💡 Gerar Sequência"):
             if tema_st:
                 with st.spinner('Criando roteiro...'):
-                    prompt_s = f"{identidade_igreja} Crie 3 stories detalhados para Instagram sobre: {tema_st}. Story 1: Gancho. Story 2: Versículo ARA. Story 3: Interação."
+                    # Stories também ganham emojis para facilitar a leitura rápida
+                    prompt_s = f"{identidade_igreja} Crie 3 stories dinâmicos com emojis para Instagram sobre: {tema_st}. Story 1: Gancho. Story 2: Versículo ARA. Story 3: Interação."
                     res = client.chat.completions.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": prompt_s}])
                     texto_s = res.choices[0].message.content
                     st.markdown(texto_s)
                     
-                    # Botão WhatsApp
                     link_wa_s = f"https://wa.me/?text={urllib.parse.quote(texto_s)}"
                     st.link_button("📲 Enviar para o WhatsApp", link_wa_s)
             else:
