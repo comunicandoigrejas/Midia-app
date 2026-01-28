@@ -19,13 +19,35 @@ if "cor_previa" not in st.session_state: st.session_state.cor_previa = None
 for chave in ["perfil", "igreja_id", "email"]:
     if chave not in st.session_state: st.session_state[chave] = ""
 
-# --- CSS: VISUAL LIMPO (Sem Fork, GitHub ou Menu) ---
+# --- CSS REFORÇADO: REMOVE GITHUB, FORK, LINK DE CÓDIGO E MENU ---
 st.markdown("""
     <style>
-    [data-testid="stHeaderActionElements"], .stAppDeployButton, #MainMenu { display: none !important; }
-    header[data-testid="stHeader"] { background-color: rgba(0,0,0,0) !important; color: transparent !important; }
-    footer { visibility: hidden !important; }
-    .block-container { padding-top: 1rem !important; }
+    /* Remove todos os botões de ação do topo (GitHub, Fork, View Source) */
+    [data-testid="stHeaderActionElements"] {
+        display: none !important;
+    }
+    
+    /* Remove o botão de Deploy e o menu de 3 pontos */
+    .stAppDeployButton, #MainMenu {
+        display: none !important;
+    }
+
+    /* Torna o cabeçalho invisível para não mostrar a barra cinza */
+    header[data-testid="stHeader"] {
+        background-color: rgba(0,0,0,0) !important;
+        color: transparent !important;
+        border: none !important;
+    }
+
+    /* Remove o rodapé do Streamlit */
+    footer {
+        visibility: hidden !important;
+    }
+
+    /* Ajuste para o conteúdo começar do topo de forma limpa */
+    .block-container {
+        padding-top: 1rem !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
