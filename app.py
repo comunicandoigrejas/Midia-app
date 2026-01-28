@@ -72,8 +72,11 @@ if not st.session_state.logado:
                 else: st.error("E-mail ou senha incorretos.")
 
     with tab_rec:
-        st.write("Esqueceu sua senha? Solicite uma nova ao administrador.")
-        st.link_button("🔑 Solicitar Nova Senha", "https://wa.me/SEUNUMERO?text=Olá, esqueci minha senha.")
+        st.subheader("Esqueceu sua senha?")
+        st.write("Não se preocupe! Clique no botão abaixo para falar com o suporte da **Comunicando Igrejas** e solicitar uma nova senha.")
+        # NÚMERO ATUALIZADO AQUI
+        link_recuperar = "https://wa.me/551937704733?text=Olá!%20Esqueci%20minha%20senha%20no%20painel%20da%20Comunicando%20Igrejas."
+        st.link_button("🔑 Solicitar Nova Senha via WhatsApp", link_recuperar)
 
 # ==========================================
 # AMBIENTE LOGADO
@@ -82,7 +85,6 @@ else:
     df_conf = carregar_configuracoes()
     conf = df_conf[df_conf['igreja_id'] == st.session_state.igreja_id].iloc[0]
     
-    # Tratamento de Cor
     cor_tema = str(conf['cor_tema']).strip() if pd.notnull(conf['cor_tema']) else "#4169E1"
     if not cor_tema.startswith("#"): cor_tema = f"#{cor_tema}"
     aplicar_tema(cor_tema)
@@ -135,7 +137,7 @@ else:
                 res_s = client.chat.completions.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": prompt_s}])
                 st.write(res_s.choices[0].message.content)
 
-    # --- ABA 3: CALENDÁRIO & AGENDAMENTO ---
+    # --- ABA 3: CALENDÁRIO ---
     with tab_cal:
         st.header("📅 Agendamento de Postagens")
         with st.expander("➕ Nova Postagem"):
@@ -168,13 +170,16 @@ else:
             "Lavanda": "#A29BFE", "Marrom Café": "#4E342E"
         }
         cols = st.columns(5)
-        for i, (nome, hex) in enumerate(paleta.items()):
+        for i, (nome, hex_val) in enumerate(paleta.items()):
             with cols[i % 5]:
-                if st.button(nome, key=nome): st.session_state.cor_previa = hex
+                if st.button(nome, key=nome): st.session_state.cor_previa = hex_val
         
         c_pick = st.color_picker("Cor personalizada:", st.session_state.get('cor_previa', cor_tema))
         if st.button("👁️ Testar Visual"): aplicar_tema(c_pick)
-        st.link_button("💾 Salvar Cor (WhatsApp)", f"https://api.whatsapp.com/send?phone=SEUNUMERO&text=Alterar cor para {c_pick}")
+        
+        # NÚMERO ATUALIZADO AQUI TAMBÉM
+        msg_cor = urllib.parse.quote(f"Olá! Gostaria de definir a cor permanente da {conf['nome_exibicao']} como {c_pick}")
+        st.link_button("💾 Salvar Cor (WhatsApp)", f"https://wa.me/551937704733?text={msg_cor}")
 
         st.divider()
         st.subheader("🔐 Alterar Minha Senha")
