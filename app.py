@@ -7,23 +7,27 @@ import pandas as pd
 # 1. Configurações Iniciais
 st.set_page_config(page_title="Comunicando Igrejas - Painel", layout="wide")
 
-# --- ESCONDER BARRA SUPERIOR ---
-st.markdown("<style>header {visibility: hidden;} #MainMenu {visibility: hidden;} footer {visibility: hidden;}</style>", unsafe_allow_html=True)
-
-# 2. Conexão
+# 2. Conexão e Segurança
+# Buscamos a URL uma única vez para usar no app todo
 try:
+    URL_PLANILHA = st.secrets["connections"]["gsheets"]["spreadsheet"]
     conn = st.connection("gsheets", type=GSheetsConnection)
 except Exception as e:
-    st.error(f"Erro na conexão: {e}")
-    st.info("Verifique se o nome nos Secrets é [connections.gsheets]")
+    st.error("🚨 Erro nos Secrets: O link da planilha não foi encontrado ou está formatado errado.")
+    st.stop()
+
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
-# --- FUNÇÕES DE BANCO DE DATA ---
+# --- FUNÇÕES DE BANCO DE DADOS (AGORA COM LINK EXPLÍCITO) ---
 def carregar_usuarios():
-    return conn.read(worksheet="usuarios")
+    # Passamos o link diretamente aqui para não ter erro
+    return conn.read(spreadsheet=URL_PLANILHA, worksheet="usuarios")
 
 def carregar_configuracoes():
-    return conn.read(worksheet="configuracoes")
+    # Passamos o link diretamente aqui também
+    return conn.read(spreadsheet=URL_PLANILHA, worksheet="configuracoes")
+
+# ... (Restante do seu código de login e abas segue abaixo)
 
 # --- LÓGICA DE ACESSO ---
 if "logado" not in st.session_state:
