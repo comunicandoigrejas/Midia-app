@@ -181,10 +181,24 @@ else:
                 res_s = chamar_super_agente(f"Crie 3 stories sobre {ts} para {conf['nome_exibicao']}.")
                 st.success(res_s)
 
-    # --- ABA 3: PERFIL ---
+  # --- ABA 3: PERFIL ---
     with t_perf:
         st.header("⚙️ Personalização")
         nova_cor = st.color_picker("Cor da igreja:", cor_atual)
         if st.button("🖌️ Aplicar Cor"):
             st.session_state.cor_previa = nova_cor
             st.rerun()
+        
+        st.divider()
+        with st.form("form_senha"):
+            st.subheader("🔑 Alterar Senha")
+            s_at = st.text_input("Senha Atual", type="password")
+            s_nv = st.text_input("Nova Senha", type="password")
+            if st.form_submit_button("Atualizar"):
+                df_u = carregar_usuarios()
+                idx = df_u.index[df_u['email'].str.lower() == st.session_state.email.lower()].tolist()
+                if idx and str(df_u.at[idx[0], 'senha']) == s_at:
+                    df_u.at[idx[0], 'senha'] = s_nv
+                    conn.update(spreadsheet=URL_PLANILHA, worksheet="usuarios", data=df_u)
+                    st.success("✅ Senha alterada!")
+                else: st.error("❌ Erro na senha.")
