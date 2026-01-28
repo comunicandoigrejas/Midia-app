@@ -203,7 +203,23 @@ with tab_perfil:
     st.divider()
 
     # Seletor Livre e Prévia
-    cor_final = st.color_picker("Ajuste fino da cor:", st.session_state.get('cor_previa', config['cor_tema']))
+  # --- TRATAMENTO DE SEGURANÇA PARA A COR ---
+# 1. Pegamos a cor da sessão (prévia) ou da planilha
+cor_da_planilha = str(config['cor_tema']).strip() if pd.notnull(config['cor_tema']) else "#FF4B4B"
+
+# 2. Se o usuário esqueceu o '#', nós adicionamos automaticamente
+if not cor_da_planilha.startswith("#"):
+    cor_da_planilha = f"#{cor_da_planilha}"
+
+# 3. Garantimos que a cor tenha um tamanho válido (ex: #FFFFFF ou #FFF)
+if len(cor_da_planilha) not in [4, 7]:
+    cor_da_planilha = "#FF4B4B" # Fallback para vermelho caso o código seja inválido
+
+# Agora usamos o valor tratado no widget
+cor_final = st.color_picker(
+    "Ajuste fino da cor:", 
+    st.session_state.get('cor_previa', cor_da_planilha)
+)
     
     col_previa, col_acao = st.columns(2)
     with col_previa:
