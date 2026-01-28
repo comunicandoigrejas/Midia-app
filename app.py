@@ -3,25 +3,34 @@ from streamlit_gsheets import GSheetsConnection
 from openai import OpenAI
 import urllib.parse
 import pandas as pd
+import time
 from datetime import datetime
 
-# 1. CONFIGURAÇÕES DE PÁGINA
+# 1. CONFIGURAÇÕES DE PÁGINA E UI
 st.set_page_config(page_title="Comunicando Igrejas Pro", page_icon="⚡", layout="wide")
 
-# CSS PARA LIMPAR A TELA (RETIRAR GITHUB/FORK)
-st.markdown("""<style>header {visibility: hidden !important;} #MainMenu {visibility: hidden !important;} footer {visibility: hidden !important;} .block-container {padding-top: 1rem !important;}</style>""", unsafe_allow_html=True)
+# CSS para esconder o menu do Streamlit e o botão de Fork do GitHub
+st.markdown("""
+    <style>
+    header {visibility: hidden !important;}
+    #MainMenu {visibility: hidden !important;}
+    footer {visibility: hidden !important;}
+    .block-container {padding-top: 1rem !important;}
+    </style>
+    """, unsafe_allow_html=True)
 
 # 2. INICIALIZAÇÃO DE VARIÁVEIS DE SESSÃO
 if "logado" not in st.session_state: st.session_state.logado = False
 if "cor_previa" not in st.session_state: st.session_state.cor_previa = None
 
-# 3. CONEXÕES
+# 3. CONEXÕES (Secrets)
 try:
     conn = st.connection("gsheets", type=GSheetsConnection)
     client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+    ASSISTANT_ID = st.secrets["OPENAI_ASSISTANT_ID"] # ID do seu Assistente
     URL_PLANILHA = st.secrets["connections"]["gsheets"]["spreadsheet"]
 except Exception as e:
-    st.error("Erro de Conexão. Verifique os Secrets.")
+    st.error("Erro de Conexão. Verifique os Secrets (API Key, Assistant ID e Planilha).")
     st.stop()
 
 # --- FUNÇÕES DE DADOS ---
@@ -32,12 +41,47 @@ def carregar_calendario():
     except: return pd.DataFrame(columns=['igreja_id', 'data', 'rede_social', 'tema', 'status'])
 
 def aplicar_tema(cor):
-    st.markdown(f"""<style>.stButton>button {{ background-color: {cor}; color: white; border-radius: 8px; border: none; font-weight: bold; }} .stButton>button:hover {{ opacity: 0.8; color: white; }} .stTabs [aria-selected="true"] {{ background-color: {cor}; color: white !important; border-radius: 5px; }}</style>""", unsafe_allow_html=True)
+    st.markdown(f"""
+        <style>
+        .stButton>button {{ background-color: {cor}; color: white; border-radius: 8px; border: none; font-weight: bold; }}
+        .stButton>button:hover {{ opacity: 0.8; color: white; }}
+        .stTabs [aria-selected="true"] {{ background-color: {cor}; color: white !important; border-radius: 5px; }}
+        </style>
+    """, unsafe_allow_html=True)
 
-# --- FUNÇÃO DE LOGOUT SEGURO ---
 def logout():
     st.session_state.clear()
     st.rerun()
+
+# --- FUNÇÃO DO SUPER AGENTE (ASSISTANTS API) ---
+def chamar_super_agente(comando):
+    # Cria a Thread (conversa)
+    thread = client.beta.threads.create()
+    
+    # Envia a mensagem do usuário
+    client.beta.threads.messages.create(
+        thread_id=thread.id,
+        role="user",
+        content=comando
+    )
+    
+    # Executa o Agente (Run)
+    run = client.beta.threads.runs.create(
+        thread_id=thread.id,
+        assistant_id=ASSISTANT_ID
+    )
+    
+    # Polling (Espera a resposta)
+    with st.spinner("🧠 O Super Agente está processando sua estratégia..."):
+        while run.status != "completed":
+            time.sleep(1)
+            run = client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
+            if run.status in ["failed", "cancelled", "expired"]:
+                return "Desculpe, o Agente encontrou um erro ao processar. Tente novamente."
+    
+    # Recupera a resposta final
+    mensagens = client.beta.threads.messages.list(thread_id=thread.id)
+    return mensagens.data[0].content[0].text.value
 
 # ==========================================
 # TELA DE LOGIN
@@ -45,6 +89,7 @@ def logout():
 if not st.session_state.logado:
     st.title("🚀 Comunicando Igrejas")
     tab_log, tab_rec = st.tabs(["Acessar Sistema", "Recuperar Senha"])
+    
     with tab_log:
         with st.form("form_login"):
             email_in = st.text_input("E-mail")
@@ -61,9 +106,10 @@ if not st.session_state.logado:
                         st.rerun()
                     else: st.warning("Conta inativa.")
                 else: st.error("E-mail ou senha incorretos.")
+
     with tab_rec:
-        st.subheader("Suporte Técnico")
-        st.link_button("🔑 Solicitar Nova Senha (WhatsApp)", "https://wa.me/551937704733?text=Olá, esqueci minha senha.")
+        st.subheader("Esqueceu sua senha?")
+        st.link_button("🔑 Solicitar Nova Senha (WhatsApp)", "https://wa.me/551937704733?text=Olá, esqueci minha senha no painel.")
 
 # ==========================================
 # AMBIENTE LOGADO
@@ -71,7 +117,7 @@ if not st.session_state.logado:
 else:
     df_conf = carregar_configuracoes()
     
-    # Lógica Master vs Usuário
+    # Diferencia Admin Master de Usuário Comum
     if st.session_state.perfil == "admin":
         st.sidebar.title("👑 PAINEL MASTER")
         igreja_selecionada = st.sidebar.selectbox("Simular Igreja:", df_conf['nome_exibicao'].tolist())
@@ -80,72 +126,62 @@ else:
         conf = df_conf[df_conf['igreja_id'] == st.session_state.igreja_id].iloc[0]
         st.sidebar.title(f"📱 {conf['nome_exibicao']}")
 
-    # Aplicação do Tema
+    # Aplicação do Tema de Cor
     cor_tema = str(conf['cor_tema']).strip() if pd.notnull(conf['cor_tema']) else "#4169E1"
     if not cor_tema.startswith("#"): cor_tema = f"#{cor_tema}"
     aplicar_tema(cor_tema)
 
-    # BARRA LATERAL (SIDEBAR)
+    # Sidebar
     with st.sidebar:
-        # BOTÃO SAIR NO TOPO PARA FACILITAR
-        if st.button("🚪 Sair do Sistema", use_container_width=True, type="primary"):
-            logout()
+        if st.button("🚪 Sair do Sistema", use_container_width=True, type="primary"): logout()
         st.divider()
         st.link_button("⛪ Instagram da Igreja", conf['instagram_url'])
-        st.info(f"Logado como: {st.session_state.email}")
+        st.caption(f"Logado como: {st.session_state.email}")
 
-    # DEFINIÇÃO DAS ABAS DINÂMICAS
+    # Definição das Abas
     list_abas = ["✨ Legendas", "🎬 Stories", "📅 Calendário", "⚙️ Perfil"]
-    if st.session_state.perfil == "admin":
-        list_abas.insert(0, "📊 Gestão Master")
+    if st.session_state.perfil == "admin": list_abas.insert(0, "📊 Gestão Master")
+    abas = st.tabs(list_abas)
 
-    abas_criadas = st.tabs(list_abas)
+    if st.session_state.perfil == "admin": tab_master, tab_gen, tab_story, tab_cal, tab_perf = abas
+    else: tab_gen, tab_story, tab_cal, tab_perf = abas
 
-    if st.session_state.perfil == "admin":
-        tab_master, tab_gen, tab_story, tab_cal, tab_perf = abas_criadas
-    else:
-        tab_gen, tab_story, tab_cal, tab_perf = abas_criadas
-
-    # --- ABA MASTER (SÓ ADMIN) ---
+    # --- ABA MASTER ---
     if st.session_state.perfil == "admin":
         with tab_master:
-            st.header("📊 Painel Master")
-            c_m1, c_m2 = st.columns(2)
-            c_m1.metric("Igrejas", len(df_conf))
-            c_m2.metric("Usuários", len(carregar_usuarios()))
+            st.header("📊 Gestão Geral")
             st.dataframe(df_conf, use_container_width=True)
 
-    # --- ABA 1: GERADOR ---
+    # --- ABA 1: GERADOR (SUPER AGENTE) ---
     with tab_gen:
-        st.header(f"Criador de Legendas - {conf['nome_exibicao']}")
-        col1, col2 = st.columns(2)
-        with col1:
+        st.header(f"✨ Super Agente: Legendas")
+        c1, c2 = st.columns(2)
+        with c1:
             rede = st.selectbox("Rede Social", ["Instagram", "Facebook", "LinkedIn"])
             estilo = st.selectbox("Tom", ["Inspiradora", "Pentecostal", "Teológica", "Jovem"])
-        with col2:
+        with c2:
             ver = st.text_input("📖 Versículo (ARA)")
             hashtags_ex = st.text_input("Hashtags Extras")
         
-        briefing = st.text_area("Sobre o que é a postagem?")
-        if st.button("✨ Gerar Legenda"):
-            if briefing:
-                with st.spinner("Escrevendo..."):
-                    prompt = f"Social Media Cristão. Legenda para {rede}, tom {estilo}, Bíblia ARA. +50 palavras. Tema: {briefing}. Versículo: {ver}. Use hashtags: {conf['hashtags_fixas']} {hashtags_ex}."
-                    res = client.chat.completions.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": prompt}])
-                    texto = res.choices[0].message.content
-                    st.code(texto, language=None)
-                    st.link_button("📲 Enviar p/ WhatsApp", f"https://api.whatsapp.com/send?text={urllib.parse.quote(texto)}")
+        brief = st.text_area("Sobre o que é a postagem?")
+        if st.button("🚀 Gerar Legenda com Super Agente"):
+            if brief:
+                # Comando formatado para o Assistente
+                prompt = f"Gere uma legenda para {rede}. Tom: {estilo}. Tema: {brief}. Versículo: {ver}. Hashtags da igreja: {conf['hashtags_fixas']} {hashtags_ex}. Lembre-se: Mínimo 50 palavras e muitos emojis!"
+                resultado = chamar_super_agente(prompt)
+                st.info(resultado)
+                st.link_button("📲 Enviar p/ WhatsApp", f"https://api.whatsapp.com/send?text={urllib.parse.quote(resultado)}")
 
-    # --- ABA 2: STORIES (3 TELAS) ---
+    # --- ABA 2: STORIES (SUPER AGENTE) ---
     with tab_story:
-        st.header("🎬 Roteiro de Stories")
-        tema_s = st.text_input("Tema da sequência?")
-        if st.button("🎬 Criar Roteiro"):
-            with st.spinner("Planejando..."):
-                p_s = f"Crie 3 stories para {conf['nome_exibicao']} sobre {tema_s}. Tela 1: Pergunta. Tela 2: Versículo ARA. Tela 3: Reflexão e CTA."
-                res_s = client.chat.completions.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": p_s}])
-                st.info(res_s.choices[0].message.content)
-                st.link_button("📲 Enviar Roteiro", f"https://api.whatsapp.com/send?text={urllib.parse.quote(res_s.choices[0].message.content)}")
+        st.header("🎬 Super Agente: Roteiro de Stories")
+        tema_s = st.text_input("Assunto da sequência")
+        if st.button("🎬 Gerar 3 Telas Estratégicas"):
+            if tema_s:
+                prompt_s = f"Crie uma sequência de 3 stories sobre {tema_s} para a igreja {conf['nome_exibicao']}. Siga a estrutura: Pergunta, Versículo ARA e Reflexão. Use muitos emojis!"
+                resultado_s = chamar_super_agente(prompt_s)
+                st.success(resultado_s)
+                st.link_button("📲 Enviar Roteiro p/ WhatsApp", f"https://api.whatsapp.com/send?text={urllib.parse.quote(resultado_s)}")
 
     # --- ABA 3: CALENDÁRIO ---
     with tab_cal:
@@ -158,42 +194,34 @@ else:
                 if st.form_submit_button("Salvar"):
                     n = pd.DataFrame([{"igreja_id": conf['igreja_id'], "data": d_p.strftime('%Y-%m-%d'), "rede_social": r_p, "tema": t_p, "status": "Pendente"}])
                     conn.create(spreadsheet=URL_PLANILHA, worksheet="calendario", data=n)
-                    st.success("Salvo!")
+                    st.success("Agendado!")
                     st.rerun()
-        df_c = carregar_calendario()
-        meu_c = df_c[df_c['igreja_id'] == conf['igreja_id']].sort_values(by='data')
+        df_ver_c = carregar_calendario()
+        meu_c = df_ver_c[df_ver_c['igreja_id'] == conf['igreja_id']].sort_values(by='data')
         st.dataframe(meu_c[['data', 'rede_social', 'tema', 'status']], use_container_width=True, hide_index=True)
 
     # --- ABA 4: PERFIL ---
     with tab_perf:
-        st.header("⚙️ Perfil e Segurança")
-        # Personalização de Cores
+        st.header("⚙️ Configurações e Segurança")
         paleta = {"Azul Catedral": "#2C3E50", "Vinho": "#7B241C", "Verde": "#556B2F", "Roxo": "#4A235A", "Grafite": "#212121", "Laranja": "#E17055", "Amarelo": "#FBC531", "Azul Royal": "#0984E3", "Vermelho": "#D63031", "Verde Menta": "#00B894", "Areia": "#C2B280", "Terracota": "#E2725B", "Azul Céu": "#87CEEB", "Lavanda": "#A29BFE", "Marrom": "#4E342E"}
-        c_cols = st.columns(5)
+        cols = st.columns(5)
         for i, (n, h) in enumerate(paleta.items()):
-            with c_cols[i % 5]:
+            with cols[i % 5]:
                 if st.button(n, key=n): st.session_state.cor_previa = h
         
-        c_p = st.color_picker("Cor:", st.session_state.get('cor_previa', cor_tema))
+        c_p = st.color_picker("Ajuste manual:", st.session_state.get('cor_previa', cor_tema))
         if st.button("👁️ Testar Visual"): aplicar_tema(c_p)
-        st.link_button("💾 Salvar Cor (WhatsApp)", f"https://wa.me/551937704733?text=Cor para {c_p}")
+        st.link_button("💾 Salvar Cor (WhatsApp)", f"https://wa.me/551937704733?text=Alterar cor permanente para {c_p}")
 
         st.divider()
-        # ALTERAR SENHA
         with st.form("form_pw"):
             s_at = st.text_input("Senha Atual", type="password")
             s_nv = st.text_input("Nova Senha", type="password")
             if st.form_submit_button("Alterar Senha"):
-                df_u = carregar_usuarios()
-                idx = df_u.index[df_u['email'].str.lower() == st.session_state.email.lower()].tolist()
-                if idx and str(df_u.at[idx[0], 'senha']) == s_at:
-                    df_u.at[idx[0], 'senha'] = s_nv
-                    conn.update(spreadsheet=URL_PLANILHA, worksheet="usuarios", data=df_u)
+                df_u_p = carregar_usuarios()
+                idx = df_u_p.index[df_u_p['email'].str.lower() == st.session_state.email.lower()].tolist()
+                if idx and str(df_u_p.at[idx[0], 'senha']) == s_at:
+                    df_u_p.at[idx[0], 'senha'] = s_nv
+                    conn.update(spreadsheet=URL_PLANILHA, worksheet="usuarios", data=df_u_p)
                     st.success("Senha alterada!")
                 else: st.error("Erro na senha atual.")
-
-        st.divider()
-        # BOTÃO SAIR EXTRA NO PERFIL
-        st.subheader("Encerramento")
-        if st.button("🚪 Sair do Aplicativo Agora", use_container_width=True):
-            logout()
