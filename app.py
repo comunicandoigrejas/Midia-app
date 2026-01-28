@@ -82,15 +82,15 @@ else:
     cor_atual = st.session_state.cor_previa if st.session_state.cor_previa else str(conf['cor_tema'])
     if not cor_atual.startswith("#"): cor_atual = f"#{cor_atual}"
 
-    # --- 🛠️ CSS AVANÇADO: BOTÃO FLUTUANTE DUPLO (ABRIR E FECHAR) ---
+    # --- 🛠️ CSS DE UNIFICAÇÃO DO BOTÃO FLUTUANTE ---
     st.markdown(f"""
         <style>
-        /* 1. Esconde ícones de desenvolvedor */
+        /* 1. Mata TUDO no cabeçalho (Ícones, Fork, GitHub, Menu) */
         [data-testid="stHeaderActionElements"], .stAppDeployButton, #MainMenu {{
             display: none !important;
         }}
 
-        /* 2. BOTÃO QUANDO A SIDEBAR ESTÁ FECHADA (ABRIR) */
+        /* 2. UNIFICA O BOTÃO DE ABRIR (Quando fechada) */
         [data-testid="stSidebarCollapseButton"] {{
             position: fixed !important;
             top: 50% !important;
@@ -99,46 +99,42 @@ else:
             z-index: 1000000 !important;
             background-color: {cor_atual} !important;
             color: white !important;
-            border-radius: 0 12px 12px 0 !important;
-            width: 40px !important;
+            border-radius: 0 15px 15px 0 !important;
+            width: 45px !important;
             height: 60px !important;
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
-            box-shadow: 4px 0px 10px rgba(0,0,0,0.2) !important;
-            border: 1px solid rgba(255,255,255,0.2) !important;
+            box-shadow: 5px 0px 15px rgba(0,0,0,0.3) !important;
         }}
 
-        /* 3. BOTÃO QUANDO A SIDEBAR ESTÁ ABERTA (FECHAR) */
-        /* Localiza o botão dentro do cabeçalho da própria sidebar */
-        [data-testid="stSidebar"] button[kind="header"] {{
+        /* 3. UNIFICA O BOTÃO DE FECHAR (Quando aberta) */
+        section[data-testid="stSidebar"] button {{
+            /* Alvos: Botão de fechar nativo do Streamlit */
             position: fixed !important;
             top: 50% !important;
-            /* Ele fica na borda direita da sidebar aberta */
-            left: 335px !important; 
+            left: 336px !important; /* largura padrão da sidebar */
             transform: translateY(-50%) !important;
             z-index: 1000001 !important;
             background-color: {cor_atual} !important;
             color: white !important;
-            border-radius: 0 12px 12px 0 !important;
-            width: 40px !important;
+            border-radius: 0 15px 15px 0 !important;
+            width: 45px !important;
             height: 60px !important;
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
-            box-shadow: 4px 0px 10px rgba(0,0,0,0.2) !important;
+            box-shadow: 5px 0px 15px rgba(0,0,0,0.3) !important;
         }}
         
-        /* Ajuste para telas menores (mobile) se necessário */
-        @media (max-width: 768px) {{
-            [data-testid="stSidebar"] button[kind="header"] {{ left: 255px !important; }}
-        }}
+        /* Esconde o cabeçalho original da sidebar para não duplicar botões */
+        [data-testid="stSidebarNav"] {{ padding-top: 2rem !important; }}
 
-        /* 4. Estilo Geral */
-        header[data-testid="stHeader"] {{ background-color: rgba(0,0,0,0) !important; }}
+        /* 4. Estilos Gerais */
+        header[data-testid="stHeader"] {{ background-color: rgba(0,0,0,0) !important; border: none !important; }}
+        footer {{ visibility: hidden !important; }}
         .stButton>button {{ background-color: {cor_atual}; color: white; border-radius: 8px; font-weight: bold; }}
         .stTabs [aria-selected="true"] {{ background-color: {cor_atual}; color: white !important; border-radius: 5px; }}
-        footer {{ visibility: hidden !important; }}
         </style>
     """, unsafe_allow_html=True)
 
@@ -149,7 +145,7 @@ else:
             st.rerun()
         st.divider()
         st.link_button("📸 Instagram", str(conf['instagram_url']), use_container_width=True)
-
+        
     # ABAS
     t_gen, t_story, t_perf = st.tabs(["✨ Legendas", "🎬 Stories", "⚙️ Perfil"])
 
