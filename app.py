@@ -7,7 +7,12 @@ import time
 from datetime import datetime
 
 # 1. CONFIGURAÇÕES DE PÁGINA E UI
-st.set_page_config(page_title="Comunicando Igrejas Pro", page_icon="⚡", layout="wide")
+st.set_page_config(
+    page_title="Comunicando Igrejas Pro", 
+    page_icon="⚡", 
+    layout="wide",
+    initial_sidebar_state="expanded"  # Isso força a barra a abrir no login
+)
 
 # CSS para esconder o menu do Streamlit e o botão de Fork do GitHub
 st.markdown("""
