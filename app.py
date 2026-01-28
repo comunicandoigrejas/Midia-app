@@ -6,7 +6,7 @@ import pandas as pd
 import time
 from datetime import datetime
 
-# 1. CONFIGURAÇÃO DE PÁGINA
+# 1. CONFIGURAÇÃO DE PÁGINA (Sempre o primeiro comando)
 st.set_page_config(
     page_title="Comunicando Igrejas Pro", 
     page_icon="⚡", 
@@ -30,29 +30,27 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 3. CONEXÕES
+# 3. CONEXÕES (Capturando a URL logo no início)
 try:
+    # Capturamos a URL aqui para garantir que ela exista em todo o código
+    URL_PLANILHA = st.secrets["connections"]["gsheets"]["spreadsheet"]
     conn = st.connection("gsheets", type=GSheetsConnection)
     client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
     ASSISTANT_ID = st.secrets["OPENAI_ASSISTANT_ID"]
 except Exception as e:
-    st.error(f"Falha na conexão: {e}")
+    st.error(f"⚠️ Erro Crítico nos Secrets: {e}")
     st.stop()
 
 # --- FUNÇÕES DE APOIO ---
 def carregar_usuarios(): 
-    # Busca a URL direto dos secrets para garantir que nunca seja nula
-    url = st.secrets["connections"]["gsheets"]["spreadsheet"]
-    return conn.read(spreadsheet=url, worksheet="usuarios", ttl=0)
+    return conn.read(spreadsheet=URL_PLANILHA, worksheet="usuarios", ttl=0)
 
 def carregar_configuracoes(): 
-    url = st.secrets["connections"]["gsheets"]["spreadsheet"]
-    return conn.read(spreadsheet=url, worksheet="configuracoes", ttl=0)
+    return conn.read(spreadsheet=URL_PLANILHA, worksheet="configuracoes", ttl=0)
 
 def carregar_calendario():
-    url = st.secrets["connections"]["gsheets"]["spreadsheet"]
     try: 
-        return conn.read(spreadsheet=url, worksheet="calendario", ttl=0)
+        return conn.read(spreadsheet=URL_PLANILHA, worksheet="calendario", ttl=0)
     except: 
         return pd.DataFrame(columns=['igreja_id', 'data', 'rede_social', 'tema', 'status'])
 
@@ -68,7 +66,7 @@ def chamar_super_agente(comando):
     return mensagens.data[0].content[0].text.value
 
 # ==========================================
-# INTERFACE DE LOGIN (COM BLOQUEIO REAL)
+# INTERFACE DE LOGIN (BLOQUEIO REFORÇADO)
 # ==========================================
 if not st.session_state.logado:
     st.title("🚀 Comunicando Igrejas")
@@ -80,13 +78,14 @@ if not st.session_state.logado:
             se = st.text_input("Senha", type="password")
             if st.form_submit_button("Acessar Sistema"):
                 df_u = carregar_usuarios()
-                # Filtra e-mail e senha
+                # Validação de e-mail e senha
                 u = df_u[(df_u['email'].str.lower() == em.lower()) & (df_u['senha'].astype(str) == str(se))]
                 
                 if not u.empty:
-                    # --- TRAVA DE BLOQUEIO RIGOROSA ---
-                    # Limpa espaços e coloca em minúsculo
-                    status_db = str(u.iloc[0]['status']).strip().lower()
+                    # --- TRAVA DE BLOQUEIO (TRATANDO VALORES VAZIOS) ---
+                    status_raw = u.iloc[0]['status']
+                    # Se for nulo ou NaN, vira 'inativo' por segurança
+                    status_db = str(status_raw).strip().lower() if pd.notnull(status_raw) else "inativo"
                     
                     if status_db == 'ativo':
                         st.session_state.logado = True
@@ -95,7 +94,7 @@ if not st.session_state.logado:
                         st.session_state.email = em
                         st.rerun()
                     else:
-                        st.error("🚫 ACESSO BLOQUEADO: Sua conta está inativa. Procure o suporte.")
+                        st.error(f"🚫 ACESSO BLOQUEADO: Sua conta está com status '{status_db}'. Procure o suporte.")
                 else:
                     st.error("❌ E-mail ou senha incorretos.")
     with t2:
@@ -107,7 +106,7 @@ if not st.session_state.logado:
 else:
     df_conf = carregar_configuracoes()
     
-    # Define se é Admin Master ou Usuário
+    # Lógica Admin Master vs Usuário
     if st.session_state.perfil == "admin":
         st.sidebar.subheader("👑 Modo Administrador")
         igreja_nome = st.sidebar.selectbox("Escolher Igreja:", df_conf['nome_exibicao'].tolist())
@@ -121,13 +120,12 @@ else:
             st.session_state.clear()
             st.rerun()
         st.divider()
-        st.link_button("📸 Instagram", conf['instagram_url'], use_container_width=True)
+        st.link_button("📸 Instagram", str(conf['instagram_url']), use_container_width=True)
 
-    # ABAS
     abas = st.tabs(["✨ Legendas", "🎬 Stories", "📅 Calendário", "⚙️ Perfil"])
     t_gen, t_story, t_cal, t_perf = abas
 
-    # --- GERADOR ---
+    # --- ABA 1: GERADOR ---
     with t_gen:
         st.header("✨ Super Agente: Conteúdo")
         br = st.text_area("O que vamos criar?")
@@ -136,18 +134,15 @@ else:
                 res = chamar_super_agente(f"Legenda para Instagram, tema {br}. Hashtags: {conf['hashtags_fixas']}")
                 st.info(res)
 
-    # --- CALENDÁRIO (FIXO CONTRA VALUEERROR) ---
+    # --- ABA 3: CALENDÁRIO (RESOLVENDO O VALUEERROR) ---
     with t_cal:
         st.header("📅 Agendamento")
         with st.expander("➕ Novo Post"):
-            with st.form("form_agendar_final"):
-                dp = st.date_input("Data")
+            with st.form("form_agendar"):
+                dp = st.date_input("Data", datetime.now())
                 tp = st.text_input("Tema")
-                if st.form_submit_button("Confirmar"):
-                    # BUSCA A URL NO MOMENTO EXATO DO CLIQUE
-                    planilha_url = st.secrets["connections"]["gsheets"]["spreadsheet"]
-                    
-                    if planilha_url:
+                if st.form_submit_button("Confirmar Agendamento"):
+                    if URL_PLANILHA:
                         dados_novos = pd.DataFrame([{
                             "igreja_id": conf['igreja_id'], 
                             "data": dp.strftime('%Y-%m-%d'), 
@@ -155,18 +150,20 @@ else:
                             "tema": tp, 
                             "status": "Pendente"
                         }])
-                        # Gravação forçada com a URL do Secret
-                        conn.create(spreadsheet=planilha_url, worksheet="calendario", data=dados_novos)
-                        st.success("✅ Salvo no Calendário!")
+                        # Usando a variável global URL_PLANILHA que validamos no início
+                        conn.create(spreadsheet=URL_PLANILHA, worksheet="calendario", data=dados_novos)
+                        st.success("✅ Salvo com sucesso!")
                         time.sleep(1)
                         st.rerun()
                     else:
-                        st.error("Erro Crítico: Link da planilha não encontrado.")
+                        st.error("Erro: Link da planilha não encontrado.")
         
         df_c = carregar_calendario()
-        st.dataframe(df_c[df_c['igreja_id'] == conf['igreja_id']], use_container_width=True, hide_index=True)
+        # Filtra apenas o calendário da igreja selecionada
+        df_filtrado = df_c[df_c['igreja_id'].astype(str) == str(conf['igreja_id'])]
+        st.dataframe(df_filtrado, use_container_width=True, hide_index=True)
 
-    # --- PERFIL ---
     with t_perf:
         st.header("⚙️ Minha Conta")
-        st.write(f"Usuário: **{st.session_state.email}**")
+        st.write(f"Conectado como: **{st.session_state.email}**")
+        st.write(f"Perfil: **{st.session_state.perfil.capitalize()}**")
