@@ -106,20 +106,21 @@ if not st.session_state.logado:
 # ==========================================
 # AMBIENTE LOGADO
 # ==========================================
-# ... (código anterior do login)
 else:
-    # Este bloco só roda se o usuário estiver logado
+    # 4 espaços de recuo para entrar no 'else'
     df_conf = carregar_configuracoes()
     
-    # A BARRA LATERAL PRECISA ESTAR ALINHADA AQUI (4 espaços para dentro do else)
     with st.sidebar:
+        # 8 espaços de recuo para entrar no 'with'
         st.subheader(f"⛪ {conf['nome_exibicao']}")
         
+        # Esta linha deve estar EXATAMENTE abaixo da de cima
         if st.button("🚪 LOGOUT", use_container_width=True, type="primary"):
+            # 12 espaços de recuo para entrar no 'if'
             st.session_state.clear()
             st.rerun()
             
-        st.divider()
+        st.divider() # Volta para 8 espaços
         st.link_button("📸 Instagram", conf['instagram_url'], use_container_width=True)
     
     # O restante das abas também segue este alinhamento
