@@ -130,15 +130,24 @@ else:
     abas = st.tabs(["✨ Legendas", "🎬 Stories", "⚙️ Perfil"])
     t_gen, t_story, t_perf = abas
 
+  # --- ABA 1: GERADOR DE LEGENDAS ---
     with t_gen:
-        st.header("✨ Super Agente: Conteúdo")
-        br = st.text_area("Sobre o que vamos postar?")
+        st.header("✨ Gerador ARA (Super Agente)")
+        col1, col2 = st.columns(2)
+        with col1:
+            rd = st.selectbox("Rede Social", ["Instagram", "Facebook", "LinkedIn"])
+            est = st.selectbox("Tom", ["Inspiradora", "Pentecostal", "Jovem", "Teológica"])
+        with col2:
+            vr = st.text_input("📖 Versículo (ARA)")
+            ht = st.text_input("Hashtags Extras")
+        
+        br = st.text_area("Descreva o tema da postagem")
         if st.button("🚀 Criar Legenda"):
             if br:
-                res = chamar_super_agente(f"Legenda para Instagram, tema {br}. Use hashtags: {conf['hashtags_fixas']}")
-                st.info(res)
-                st.link_button("📲 Enviar WhatsApp", f"https://api.whatsapp.com/send?text={urllib.parse.quote(res)}")
-
+                prompt = f"Gere legenda para {rd}, tom {est}, tema {br}, versículo {vr}. Use hashtags: {conf['hashtags_fixas']} {ht}"
+                resultado = chamar_super_agente(prompt)
+                st.info(resultado) # Garante que o texto apareça na tela
+                st.link_button("📲 Enviar p/ WhatsApp", f"https://api.whatsapp.com/send?text={urllib.parse.quote(resultado)}")
     with t_story:
         st.header("🎬 Super Agente: Stories")
         ts = st.text_input("Tema dos Stories")
