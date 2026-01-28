@@ -20,42 +20,6 @@ if "cor_previa" not in st.session_state: st.session_state.cor_previa = None
 for chave in ["perfil", "igreja_id", "email"]:
     if chave not in st.session_state: st.session_state[chave] = ""
 
-# --- 🛠️ CSS AVANÇADO: MOVE O BOTÃO DE RECOLHER E SOME COM OS ÍCONES ---
-st.markdown("""
-    <style>
-    /* 1. Esconde os ícones de desenvolvedor (Fork, GitHub, View Source) */
-    [data-testid="stHeaderActionElements"] {
-        display: none !important;
-    }
-
-    /* 2. Esconde o menu de 3 pontos e o botão de Deploy */
-    #MainMenu, .stAppDeployButton {
-        visibility: hidden !important;
-        display: none !important;
-    }
-
-    /* 3. LOCALIZA E MOVE O BOTÃO DE RECOLHER (O símbolo '>') */
-    /* Deslocamos ele para baixo para não ser afetado pela limpeza do topo */
-    [data-testid="stSidebarCollapseButton"] {
-        top: 10px !important;
-        left: 100px !important;
-        background-color: rgba(255,255,255,0.1);
-        border-radius: 50%;
-        z-index: 999999;
-    }
-
-    /* 4. Torna o cabeçalho invisível para remover a barra cinza */
-    header[data-testid="stHeader"] {
-        background-color: rgba(0,0,0,0) !important;
-        border: none !important;
-    }
-
-    /* 5. Remove o rodapé e ajusta o conteúdo */
-    footer { visibility: hidden !important; }
-    .block-container { padding-top: 3rem !important; }
-    </style>
-    """, unsafe_allow_html=True)
-
 # 3. CONEXÕES
 try:
     conn = st.connection("gsheets", type=GSheetsConnection)
@@ -70,17 +34,11 @@ except Exception as e:
 def carregar_usuarios(): return conn.read(spreadsheet=URL_PLANILHA, worksheet="usuarios", ttl=0)
 def carregar_configuracoes(): return conn.read(spreadsheet=URL_PLANILHA, worksheet="configuracoes", ttl=0)
 
-def aplicar_tema(cor):
-    st.markdown(f"""<style>
-        .stButton>button {{ background-color: {cor}; color: white; border-radius: 8px; border: none; font-weight: bold; }}
-        .stTabs [aria-selected="true"] {{ background-color: {cor}; color: white !important; border-radius: 5px; }}
-    </style>""", unsafe_allow_html=True)
-
 def chamar_super_agente(comando):
     thread = client.beta.threads.create()
     client.beta.threads.messages.create(thread_id=thread.id, role="user", content=comando)
     run = client.beta.threads.runs.create(thread_id=thread.id, assistant_id=ASSISTANT_ID)
-    with st.spinner("🧠 Super Agente processando..."):
+    with st.spinner("🧠 O Super Agente está processando..."):
         while run.status != "completed":
             time.sleep(1)
             run = client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
@@ -121,9 +79,50 @@ else:
     else:
         conf = df_conf[df_conf['igreja_id'] == st.session_state.igreja_id].iloc[0]
 
+    # Definição de Cor do Tema
     cor_atual = st.session_state.cor_previa if st.session_state.cor_previa else str(conf['cor_tema'])
     if not cor_atual.startswith("#"): cor_atual = f"#{cor_atual}"
-    aplicar_tema(cor_atual)
+
+    # --- 🛠️ CSS DINÂMICO: BOTÃO CENTRALIZADO E PROTEÇÃO ---
+    st.markdown(f"""
+        <style>
+        /* 1. Esconde os ícones de desenvolvedor no topo direito */
+        [data-testid="stHeaderActionElements"], .stAppDeployButton, #MainMenu {{
+            display: none !important;
+        }}
+
+        /* 2. MOVE O BOTÃO DE RECOLHER PARA O CENTRO DA LATERAL ESQUERDA */
+        [data-testid="stSidebarCollapseButton"] {{
+            position: fixed !important;
+            top: 50% !important;
+            left: 0px !important;
+            transform: translateY(-50%) !important;
+            z-index: 9999999 !important;
+            background-color: {cor_atual} !important;
+            color: white !important;
+            border-radius: 0 10px 10px 0 !important;
+            width: 45px !important;
+            height: 50px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            box-shadow: 2px 2px 10px rgba(0,0,0,0.3) !important;
+        }}
+
+        /* 3. Cabeçalho invisível */
+        header[data-testid="stHeader"] {{
+            background-color: rgba(0,0,0,0) !important;
+            border: none !important;
+        }}
+
+        /* 4. Estilos de botões e Tabs usando a cor do tema */
+        .stButton>button {{ background-color: {cor_atual}; color: white; border-radius: 8px; font-weight: bold; }}
+        .stTabs [aria-selected="true"] {{ background-color: {cor_atual}; color: white !important; border-radius: 5px; }}
+        
+        footer {{ visibility: hidden !important; }}
+        .block-container {{ padding-top: 2rem !important; }}
+        </style>
+    """, unsafe_allow_html=True)
 
     with st.sidebar:
         st.subheader(f"⛪ {conf['nome_exibicao']}")
@@ -134,9 +133,14 @@ else:
         st.link_button("📸 Instagram", str(conf['instagram_url']), use_container_width=True)
 
     # ABAS
-    t_gen, t_story, t_perf = st.tabs(["✨ Legendas", "🎬 Stories", "⚙️ Perfil"])
+    lista_abas = ["✨ Legendas", "🎬 Stories", "⚙️ Perfil"]
+    if st.session_state.perfil == "admin": lista_abas.insert(0, "📊 Master")
+    obj_abas = st.tabs(lista_abas)
 
-    # --- ABA 1: LEGENDAS ---
+    if st.session_state.perfil == "admin": t_master, t_gen, t_story, t_perf = obj_abas
+    else: t_gen, t_story, t_perf = obj_abas
+
+    # --- ABA 1: LEGENDAS (COMPLETA ARA) ---
     with t_gen:
         st.header("✨ Gerador de Conteúdo ARA")
         col1, col2 = st.columns(2)
