@@ -12,30 +12,18 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="auto"
 )
-
-# 2. INICIALIZAÇÃO DE SEGURANÇA
+# 2. INICIALIZAÇÃO DE ESTADO
 if "logado" not in st.session_state: st.session_state.logado = False
 if "cor_previa" not in st.session_state: st.session_state.cor_previa = None
 for chave in ["perfil", "igreja_id", "email"]:
     if chave not in st.session_state: st.session_state[chave] = ""
 
-# --- 🛠️ CSS AJUSTADO: ESCONDE O DESNECESSÁRIO E MANTÉM O BOTÃO DE RECUAR ---
+# --- 🛠️ CSS DE PROTEÇÃO MÁXIMA: ELIMINA CABEÇALHO E RODAPÉ ---
 st.markdown("""
     <style>
-    /* Esconde apenas os botões da direita: Fork, GitHub e View Source */
-    [data-testid="stHeaderActionElements"] {
+    /* Esconde o cabeçalho inteiro (remove Fork, GitHub, Menu e o botão >) */
+    [data-testid="stHeader"] {
         display: none !important;
-    }
-
-    /* Esconde o botão de Deploy e o Menu de 3 pontos */
-    .stAppDeployButton, #MainMenu {
-        display: none !important;
-    }
-
-    /* Mantém o header mas o deixa transparente para o botão '>' aparecer */
-    header[data-testid="stHeader"] {
-        background-color: rgba(0,0,0,0) !important;
-        color: inherit !important;
     }
 
     /* Remove o rodapé 'Made with Streamlit' */
@@ -43,9 +31,15 @@ st.markdown("""
         visibility: hidden !important;
     }
 
-    /* Ajuste de margem para o conteúdo começar de forma elegante */
+    /* Remove espaços inúteis e ajusta o topo para o conteúdo começar do zero */
     .block-container {
-        padding-top: 2rem !important;
+        padding-top: 0rem !important;
+        margin-top: -2rem !important;
+    }
+
+    /* Esconde elementos específicos caso o header tente reaparecer */
+    #MainMenu, .stAppDeployButton, [data-testid="stHeaderActionElements"] {
+        display: none !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -94,12 +88,11 @@ if not st.session_state.logado:
     with st.form("login"):
         em = st.text_input("E-mail")
         se = st.text_input("Senha", type="password")
-        if st.form_submit_button("Acessar"):
+        if st.form_submit_button("Acessar Sistema"):
             df_u = carregar_usuarios()
             u = df_u[(df_u['email'].str.lower() == em.lower()) & (df_u['senha'].astype(str) == str(se))]
             if not u.empty:
-                status_raw = u.iloc[0]['status']
-                status_db = str(status_raw).strip().lower() if pd.notnull(status_raw) else "inativo"
+                status_db = str(u.iloc[0]['status']).strip().lower() if pd.notnull(u.iloc[0]['status']) else "inativo"
                 if status_db == 'ativo':
                     st.session_state.logado = True
                     st.session_state.perfil = str(u.iloc[0]['perfil']).strip().lower()
@@ -136,15 +129,24 @@ else:
     abas = st.tabs(["✨ Legendas", "🎬 Stories", "⚙️ Perfil"])
     t_gen, t_story, t_perf = abas
 
+  # --- ABA 1: GERADOR DE LEGENDAS ---
     with t_gen:
-        st.header("✨ Super Agente: Conteúdo")
-        br = st.text_area("O que vamos criar?")
+        st.header("✨ Gerador ARA (Super Agente)")
+        col1, col2 = st.columns(2)
+        with col1:
+            rd = st.selectbox("Rede Social", ["Instagram", "Facebook", "LinkedIn"])
+            est = st.selectbox("Tom", ["Inspiradora", "Pentecostal", "Jovem", "Teológica"])
+        with col2:
+            vr = st.text_input("📖 Versículo (ARA)")
+            ht = st.text_input("Hashtags Extras")
+        
+        br = st.text_area("Descreva o tema da postagem")
         if st.button("🚀 Criar Legenda"):
             if br:
-                res = chamar_super_agente(f"Legenda para Instagram, tema {br}. Use hashtags: {conf['hashtags_fixas']}")
-                st.info(res)
-                st.link_button("📲 Enviar WhatsApp", f"https://api.whatsapp.com/send?text={urllib.parse.quote(res)}")
-
+                prompt = f"Gere legenda para {rd}, tom {est}, tema {br}, versículo {vr}. Use hashtags: {conf['hashtags_fixas']} {ht}"
+                resultado = chamar_super_agente(prompt)
+                st.info(resultado) # Garante que o texto apareça na tela
+                st.link_button("📲 Enviar p/ WhatsApp", f"https://api.whatsapp.com/send?text={urllib.parse.quote(resultado)}")
     with t_story:
         st.header("🎬 Super Agente: Stories")
         ts = st.text_input("Tema dos Stories")
