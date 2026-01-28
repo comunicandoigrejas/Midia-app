@@ -32,12 +32,6 @@ st.markdown("""
         visibility: hidden !important;
     }
 
-    /* Remove espaços inúteis e ajusta o topo para o conteúdo começar do zero */
-    .block-container {
-        padding-top: 0rem !important;
-        margin-top: -2rem !important;
-    }
-
     /* Esconde elementos específicos caso o header tente reaparecer */
     #MainMenu, .stAppDeployButton, [data-testid="stHeaderActionElements"] {
         display: none !important;
