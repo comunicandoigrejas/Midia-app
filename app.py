@@ -77,57 +77,48 @@ else:
     cor_atual = st.session_state.cor_previa if st.session_state.cor_previa else str(conf['cor_tema'])
     if not cor_atual.startswith("#"): cor_atual = f"#{cor_atual}"
 
-    # --- 🛠️ CSS: BOTÃO UNIFICADO + RECUO LATERAL DA PÁGINA ---
+    # --- 🛠️ CSS: POSICIONAMENTO E RECUO AVANÇADO ---
     st.markdown(f"""
         <style>
-        /* 1. Remove ícones do topo */
+        /* 1. Remove ícones do topo direito */
         [data-testid="stHeaderActionElements"], .stAppDeployButton, #MainMenu {{
             display: none !important;
         }}
 
-        /* 2. Botão de ABRIR (Centralizado na esquerda) */
+        /* 2. BOTÃO DE ABRIR (Movidp para 25% para sair do meio/logo) */
         [data-testid="stSidebarCollapseButton"] {{
             position: fixed !important;
-            top: 50% !important;
+            top: 25% !important; 
             left: 0px !important;
-            transform: translateY(-50%) !important;
             z-index: 1000000 !important;
             background-color: {cor_atual} !important;
             color: white !important;
-            border-radius: 0 15px 15px 0 !important;
-            width: 45px !important;
-            height: 60px !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            box-shadow: 5px 0px 15px rgba(0,0,0,0.3) !important;
+            border-radius: 0 10px 10px 0 !important;
+            width: 40px !important;
+            height: 50px !important;
+            box-shadow: 3px 0px 8px rgba(0,0,0,0.2) !important;
         }}
 
-        /* 3. Botão de FECHAR (Grudado na borda da sidebar aberta) */
+        /* 3. BOTÃO DE FECHAR (Alinhado com a sidebar aberta) */
         section[data-testid="stSidebar"] button {{
             position: fixed !important;
-            top: 50% !important;
+            top: 25% !important;
             left: 336px !important; 
-            transform: translateY(-50%) !important;
             z-index: 1000001 !important;
             background-color: {cor_atual} !important;
             color: white !important;
-            border-radius: 0 15px 15px 0 !important;
-            width: 45px !important;
-            height: 60px !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
+            border-radius: 0 10px 10px 0 !important;
+            width: 40px !important;
+            height: 50px !important;
         }}
 
-        /* 4. LEVAR TODA A PÁGINA MAIS PARA A LATERAL DIREITA */
+        /* 4. RECUO DA PÁGINA PARA NÃO BATER NA SIDEBAR */
         .block-container {{
-            padding-left: 10% !important; /* Cria um corredor de segurança na esquerda */
-            padding-right: 5% !important;
-            max-width: 95% !important;
+            margin-left: 5% !important; /* Afasta a página da lateral esquerda */
+            padding-left: 2rem !important;
+            max-width: 90% !important;
         }}
 
-        /* Estilos de Cores */
         header[data-testid="stHeader"] {{ background-color: rgba(0,0,0,0) !important; border: none !important; }}
         footer {{ visibility: hidden !important; }}
         .stButton>button {{ background-color: {cor_atual}; color: white; border-radius: 8px; font-weight: bold; }}
