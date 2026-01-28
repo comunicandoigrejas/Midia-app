@@ -100,27 +100,38 @@ def chamar_super_agente(comando):
 # ==========================================
 # INTERFACE DE LOGIN
 # ==========================================
+# ==========================================
+# TELA DE LOGIN (COM BLOQUEIO REFORÇADO)
+# ==========================================
 if not st.session_state.logado:
     st.title("🚀 Comunicando Igrejas")
     t1, t2 = st.tabs(["Entrar", "Recuperar Senha"])
     
     with t1:
-        with st.form("login"):
+        with st.form("login_form"):
             em = st.text_input("E-mail")
             se = st.text_input("Senha", type="password")
-            if st.form_submit_button("Acessar"):
+            if st.form_submit_button("Acessar Painel"):
                 df_u = carregar_usuarios()
+                # Localiza o usuário pelo e-mail e senha
                 u = df_u[(df_u['email'].str.lower() == em.lower()) & (df_u['senha'].astype(str) == str(se))]
+                
                 if not u.empty:
-                    st.session_state.logado = True
-                    st.session_state.perfil = str(u.iloc[0]['perfil']).strip().lower()
-                    st.session_state.igreja_id = u.iloc[0]['igreja_id']
-                    st.session_state.email = em
-                    st.rerun()
-                else: st.error("Dados incorretos.")
-    with t2:
-        st.link_button("🔑 Suporte WhatsApp", "https://wa.me/551937704733")
-
+                    # --- LÓGICA DE BLOQUEIO RIGOROSA ---
+                    # Pegamos o valor, removemos espaços extras e deixamos minúsculo
+                    status_usuario = str(u.iloc[0]['status']).strip().lower()
+                    
+                    if status_usuario == 'ativo':
+                        st.session_state.logado = True
+                        st.session_state.perfil = str(u.iloc[0]['perfil']).strip().lower()
+                        st.session_state.igreja_id = u.iloc[0]['igreja_id']
+                        st.session_state.email = em
+                        st.rerun()
+                    else:
+                        # Se o status for qualquer coisa diferente de 'ativo'
+                        st.error("🚫 ACESSO NEGADO: Sua conta está inativa ou bloqueada. Entre em contato com o administrador.")
+                else:
+                    st.error("❌ E-mail ou senha incorretos.")
 # ==========================================
 # AMBIENTE LOGADO
 # ==========================================
