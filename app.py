@@ -10,8 +10,9 @@ st.set_page_config(
     page_title="Comunicando Igrejas Pro", 
     page_icon="⚡", 
     layout="wide",
-    initial_sidebar_state="auto"
+    initial_sidebar_state="auto" # Permite que o botão de recolher funcione
 )
+
 # 2. INICIALIZAÇÃO DE ESTADO
 if "logado" not in st.session_state: st.session_state.logado = False
 if "cor_previa" not in st.session_state: st.session_state.cor_previa = None
