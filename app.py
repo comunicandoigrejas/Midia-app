@@ -4,6 +4,7 @@ from openai import OpenAI
 import urllib.parse
 import pandas as pd
 import time
+from datetime import datetime
 
 # 1. CONFIGURAÇÃO DE PÁGINA
 st.set_page_config(
@@ -72,61 +73,72 @@ if not st.session_state.logado:
 # ==========================================
 else:
     df_conf = carregar_configuracoes()
-    conf = df_conf[df_conf['igreja_id'] == st.session_state.igreja_id].iloc[0] if st.session_state.perfil != "admin" else df_conf.iloc[0]
+    if st.session_state.perfil == "admin":
+        igreja_nome = st.sidebar.selectbox("Simular Igreja:", df_conf['nome_exibicao'].tolist())
+        conf = df_conf[df_conf['nome_exibicao'] == igreja_nome].iloc[0]
+    else:
+        conf = df_conf[df_conf['igreja_id'] == st.session_state.igreja_id].iloc[0]
 
     cor_atual = st.session_state.cor_previa if st.session_state.cor_previa else str(conf['cor_tema'])
     if not cor_atual.startswith("#"): cor_atual = f"#{cor_atual}"
 
-    # --- 🛠️ CSS: SEPARAÇÃO DE BOTÕES E RECUO ---
+    # --- 🛠️ CSS AVANÇADO: BOTÃO FLUTUANTE DUPLO (ABRIR E FECHAR) ---
     st.markdown(f"""
         <style>
-        /* 1. Remove ícones do topo direito */
+        /* 1. Esconde ícones de desenvolvedor */
         [data-testid="stHeaderActionElements"], .stAppDeployButton, #MainMenu {{
             display: none !important;
         }}
 
-        /* 2. BOTÃO DE ABRIR (Movidp para 10% para não bater no Logout) */
+        /* 2. BOTÃO QUANDO A SIDEBAR ESTÁ FECHADA (ABRIR) */
         [data-testid="stSidebarCollapseButton"] {{
             position: fixed !important;
-            top: 10% !important; 
+            top: 50% !important;
             left: 0px !important;
+            transform: translateY(-50%) !important;
             z-index: 1000000 !important;
             background-color: {cor_atual} !important;
             color: white !important;
-            border-radius: 0 10px 10px 0 !important;
+            border-radius: 0 12px 12px 0 !important;
             width: 40px !important;
-            height: 50px !important;
-            box-shadow: 3px 0px 8px rgba(0,0,0,0.2) !important;
+            height: 60px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            box-shadow: 4px 0px 10px rgba(0,0,0,0.2) !important;
+            border: 1px solid rgba(255,255,255,0.2) !important;
         }}
 
-        /* 3. BOTÃO DE FECHAR (Alinhado com a sidebar aberta) */
-        section[data-testid="stSidebar"] button {{
+        /* 3. BOTÃO QUANDO A SIDEBAR ESTÁ ABERTA (FECHAR) */
+        /* Localiza o botão dentro do cabeçalho da própria sidebar */
+        [data-testid="stSidebar"] button[kind="header"] {{
             position: fixed !important;
-            top: 10% !important;
-            left: 336px !important; 
+            top: 50% !important;
+            /* Ele fica na borda direita da sidebar aberta */
+            left: 335px !important; 
+            transform: translateY(-50%) !important;
             z-index: 1000001 !important;
             background-color: {cor_atual} !important;
             color: white !important;
-            border-radius: 0 10px 10px 0 !important;
+            border-radius: 0 12px 12px 0 !important;
             width: 40px !important;
-            height: 50px !important;
-        }}
-
-        /* 4. RECUO DA PÁGINA E DA SIDEBAR */
-        .block-container {{
-            margin-left: 6% !important;
-            max-width: 90% !important;
+            height: 60px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            box-shadow: 4px 0px 10px rgba(0,0,0,0.2) !important;
         }}
         
-        /* Empurra o conteúdo interno da sidebar para baixo para não bater no botão */
-        [data-testid="stSidebarUserContent"] {{
-            padding-top: 5rem !important;
+        /* Ajuste para telas menores (mobile) se necessário */
+        @media (max-width: 768px) {{
+            [data-testid="stSidebar"] button[kind="header"] {{ left: 255px !important; }}
         }}
 
-        header[data-testid="stHeader"] {{ background-color: rgba(0,0,0,0) !important; border: none !important; }}
-        footer {{ visibility: hidden !important; }}
+        /* 4. Estilo Geral */
+        header[data-testid="stHeader"] {{ background-color: rgba(0,0,0,0) !important; }}
         .stButton>button {{ background-color: {cor_atual}; color: white; border-radius: 8px; font-weight: bold; }}
         .stTabs [aria-selected="true"] {{ background-color: {cor_atual}; color: white !important; border-radius: 5px; }}
+        footer {{ visibility: hidden !important; }}
         </style>
     """, unsafe_allow_html=True)
 
@@ -141,7 +153,7 @@ else:
     # ABAS
     t_gen, t_story, t_perf = st.tabs(["✨ Legendas", "🎬 Stories", "⚙️ Perfil"])
 
-    # --- ABA LEGENDAS ---
+    # --- ABA 1: LEGENDAS (ARA) ---
     with t_gen:
         st.header("✨ Gerador de Conteúdo ARA")
         col1, col2 = st.columns(2)
@@ -160,7 +172,7 @@ else:
                 st.info(resultado)
                 st.link_button("📲 Enviar WhatsApp", f"https://api.whatsapp.com/send?text={urllib.parse.quote(resultado)}")
 
-    # --- ABA STORIES ---
+    # --- ABA 2: STORIES ---
     with t_story:
         st.header("🎬 Super Agente: Stories")
         ts = st.text_input("Tema dos Stories")
@@ -169,7 +181,7 @@ else:
                 res_s = chamar_super_agente(f"Crie 3 stories sobre {ts} para {conf['nome_exibicao']}.")
                 st.success(res_s)
 
-    # --- ABA PERFIL ---
+    # --- ABA 3: PERFIL ---
     with t_perf:
         st.header("⚙️ Personalização")
         nova_cor = st.color_picker("Cor da igreja:", cor_atual)
