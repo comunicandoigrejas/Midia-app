@@ -32,6 +32,12 @@ st.markdown("""
         visibility: hidden !important;
     }
 
+    /* Mantém o cabeçalho transparente para o botão '>' aparecer */
+    header[data-testid="stHeader"] {
+        background-color: rgba(0,0,0,0) !important;
+        color: inherit !important;
+    }
+
     /* Esconde elementos específicos caso o header tente reaparecer */
     #MainMenu, .stAppDeployButton, [data-testid="stHeaderActionElements"] {
         display: none !important;
