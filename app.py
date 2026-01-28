@@ -14,41 +14,18 @@ st.set_page_config(
 )
 
 # 2. INICIALIZAÇÃO DE SEGURANÇA
-for chave in ["logado", "perfil", "igreja_id", "email"]:
-    if chave not in st.session_state:
-        st.session_state[chave] = False if chave == "logado" else ""
+if "logado" not in st.session_state: st.session_state.logado = False
+if "cor_previa" not in st.session_state: st.session_state.cor_previa = None
+for chave in ["perfil", "igreja_id", "email"]:
+    if chave not in st.session_state: st.session_state[chave] = ""
 
-# --- CSS ULTRA-AGRESSIVO: REMOVE FORK, GITHUB, MENU E RODAPÉ ---
+# --- CSS: VISUAL LIMPO (Sem Fork, GitHub ou Menu) ---
 st.markdown("""
     <style>
-    /* Esconde botões de ação (Fork, GitHub, Deploy) */
-    [data-testid="stHeaderActionElements"], 
-    .stAppDeployButton,
-    button[title="View source on GitHub"] {
-        display: none !important;
-    }
-    
-    /* Esconde o menu de 3 pontos (MainMenu) */
-    #MainMenu {
-        visibility: hidden !important;
-    }
-
-    /* Torna o cabeçalho invisível para esconder a barra cinza */
-    header[data-testid="stHeader"] {
-        background-color: rgba(0,0,0,0) !important;
-        color: transparent !important;
-        border: none !important;
-    }
-
-    /* Remove o rodapé 'Made with Streamlit' */
-    footer {
-        visibility: hidden !important;
-    }
-
-    /* Remove espaços inúteis no topo */
-    .block-container {
-        padding-top: 1rem !important;
-    }
+    [data-testid="stHeaderActionElements"], .stAppDeployButton, #MainMenu { display: none !important; }
+    header[data-testid="stHeader"] { background-color: rgba(0,0,0,0) !important; color: transparent !important; }
+    footer { visibility: hidden !important; }
+    .block-container { padding-top: 1rem !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -63,129 +40,123 @@ except Exception as e:
     st.stop()
 
 # --- FUNÇÕES DE APOIO ---
-def carregar_usuarios(): 
-    return conn.read(spreadsheet=URL_PLANILHA, worksheet="usuarios", ttl=0)
+def carregar_usuarios(): return conn.read(spreadsheet=URL_PLANILHA, worksheet="usuarios", ttl=0)
+def carregar_configuracoes(): return conn.read(spreadsheet=URL_PLANILHA, worksheet="configuracoes", ttl=0)
 
-def carregar_configuracoes(): 
-    return conn.read(spreadsheet=URL_PLANILHA, worksheet="configuracoes", ttl=0)
+def aplicar_tema(cor):
+    st.markdown(f"""
+        <style>
+        .stButton>button {{ background-color: {cor}; color: white; border-radius: 8px; border: none; font-weight: bold; }}
+        .stTabs [aria-selected="true"] {{ background-color: {cor}; color: white !important; border-radius: 5px; }}
+        </style>
+    """, unsafe_allow_html=True)
 
 def chamar_super_agente(comando):
     thread = client.beta.threads.create()
     client.beta.threads.messages.create(thread_id=thread.id, role="user", content=comando)
     run = client.beta.threads.runs.create(thread_id=thread.id, assistant_id=ASSISTANT_ID)
-    
-    with st.spinner("🧠 O Super Agente está processando sua estratégia..."):
+    with st.spinner("🧠 O Super Agente está processando..."):
         while run.status != "completed":
             time.sleep(1)
             run = client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
-            if run.status in ["failed", "cancelled", "expired"]:
-                return "Erro: O Agente falhou. Verifique as instruções na OpenAI."
-    
     mensagens = client.beta.threads.messages.list(thread_id=thread.id)
     return mensagens.data[0].content[0].text.value
 
 # ==========================================
-# INTERFACE DE LOGIN (COM BLOQUEIO REAL)
+# INTERFACE DE LOGIN
 # ==========================================
 if not st.session_state.logado:
     st.title("🚀 Comunicando Igrejas")
-    t1, t2 = st.tabs(["Entrar", "Suporte"])
-    
-    with t1:
-        with st.form("login"):
-            em = st.text_input("E-mail")
-            se = st.text_input("Senha", type="password")
-            if st.form_submit_button("Acessar"):
-                df_u = carregar_usuarios()
-                u = df_u[(df_u['email'].str.lower() == em.lower()) & (df_u['senha'].astype(str) == str(se))]
-                
-                if not u.empty:
-                    # Trava de Bloqueio
-                    status_db = str(u.iloc[0]['status']).strip().lower() if pd.notnull(u.iloc[0]['status']) else "inativo"
-                    
-                    if status_db == 'ativo':
-                        st.session_state.logado = True
-                        st.session_state.perfil = str(u.iloc[0]['perfil']).strip().lower()
-                        st.session_state.igreja_id = u.iloc[0]['igreja_id']
-                        st.session_state.email = em
-                        st.rerun()
-                    else:
-                        st.error("🚫 ACESSO NEGADO: Sua conta está inativa.")
-                else:
-                    st.error("❌ Dados incorretos.")
-    with t2:
-        st.link_button("📲 Suporte WhatsApp", "https://wa.me/551937704733")
+    with st.form("login"):
+        em = st.text_input("E-mail")
+        se = st.text_input("Senha", type="password")
+        if st.form_submit_button("Acessar"):
+            df_u = carregar_usuarios()
+            u = df_u[(df_u['email'].str.lower() == em.lower()) & (df_u['senha'].astype(str) == str(se))]
+            if not u.empty:
+                status_db = str(u.iloc[0]['status']).strip().lower() if pd.notnull(u.iloc[0]['status']) else "inativo"
+                if status_db == 'ativo':
+                    st.session_state.logado = True
+                    st.session_state.perfil = str(u.iloc[0]['perfil']).strip().lower()
+                    st.session_state.igreja_id = u.iloc[0]['igreja_id']
+                    st.session_state.email = em
+                    st.rerun()
+                else: st.error("🚫 Conta inativa.")
+            else: st.error("❌ E-mail ou senha incorretos.")
 
 # ==========================================
 # AMBIENTE LOGADO
 # ==========================================
 else:
     df_conf = carregar_configuracoes()
-    
     if st.session_state.perfil == "admin":
-        st.sidebar.subheader("👑 Painel Master")
         igreja_nome = st.sidebar.selectbox("Simular Igreja:", df_conf['nome_exibicao'].tolist())
         conf = df_conf[df_conf['nome_exibicao'] == igreja_nome].iloc[0]
     else:
         conf = df_conf[df_conf['igreja_id'] == st.session_state.igreja_id].iloc[0]
-        st.sidebar.subheader(f"⛪ {conf['nome_exibicao']}")
+
+    # Aplicação de Cor do Tema
+    cor_atual = st.session_state.cor_previa if st.session_state.cor_previa else str(conf['cor_tema'])
+    if not cor_atual.startswith("#"): cor_atual = f"#{cor_atual}"
+    aplicar_tema(cor_atual)
 
     with st.sidebar:
+        st.subheader(f"⛪ {conf['nome_exibicao']}")
         if st.button("🚪 LOGOUT", use_container_width=True, type="primary"):
             st.session_state.clear()
             st.rerun()
         st.divider()
         st.link_button("📸 Instagram", conf['instagram_url'], use_container_width=True)
 
-    # ABAS (REMOVIDO CALENDÁRIO)
-    list_tabs = ["✨ Legendas", "🎬 Stories", "⚙️ Perfil"]
-    if st.session_state.perfil == "admin": list_tabs.insert(0, "📊 Gestão Master")
-    
-    tabs = st.tabs(list_tabs)
-    
-    if st.session_state.perfil == "admin": t_master, t_gen, t_story, t_perf = tabs
-    else: t_gen, t_story, t_perf = tabs
+    # ABAS
+    abas = st.tabs(["✨ Legendas", "🎬 Stories", "⚙️ Perfil"])
+    t_gen, t_story, t_perf = abas
 
-    # ABA MASTER
-    if st.session_state.perfil == "admin":
-        with t_master:
-            st.write("### Controle de Igrejas")
-            st.dataframe(df_conf, use_container_width=True, hide_index=True)
-
-    # ABA LEGENDAS
+    # --- ABA LEGENDAS ---
     with t_gen:
         st.header("✨ Super Agente: Gerador de Conteúdo")
-        c1, c2 = st.columns(2)
-        with c1:
-            rd = st.selectbox("Rede Social", ["Instagram", "Facebook", "LinkedIn"])
-            est = st.selectbox("Tom", ["Inspiradora", "Pentecostal", "Jovem", "Teológica"])
-        with c2:
-            vr = st.text_input("📖 Versículo (Ex: João 10:10)")
-            ht = st.text_input("Hashtags Extras")
-        
-        br = st.text_area("Descreva o tema da postagem")
-        if st.button("🚀 Criar Minha Legenda"):
+        br = st.text_area("Sobre o que vamos postar?")
+        if st.button("🚀 Criar Legenda"):
             if br:
-                res = chamar_super_agente(f"Gere legenda para {rd}, tom {est}, tema {br}, versículo {vr}. Use as hashtags fixas: {conf['hashtags_fixas']} {ht}")
-                st.markdown("---")
-                st.subheader("📝 Resultado:")
-                st.info(res) # Exibe o texto na tela
+                res = chamar_super_agente(f"Legenda para Instagram, tema {br}. Use hashtags: {conf['hashtags_fixas']}")
+                st.info(res)
                 st.link_button("📲 Enviar WhatsApp", f"https://api.whatsapp.com/send?text={urllib.parse.quote(res)}")
 
-    # ABA STORIES
+    # --- ABA STORIES ---
     with t_story:
-        st.header("🎬 Super Agente: Roteiro de Stories")
-        ts = st.text_input("Qual o tema da sequência?")
-        if st.button("🎬 Gerar Roteiro de 3 Telas"):
+        st.header("🎬 Super Agente: Stories")
+        ts = st.text_input("Tema dos Stories")
+        if st.button("🎬 Criar Roteiro"):
             if ts:
-                res_s = chamar_super_agente(f"Crie um roteiro de 3 stories sobre {ts} para a igreja {conf['nome_exibicao']}. Use emojis e a Bíblia ARA.")
-                st.markdown("---")
-                st.subheader("🎬 Roteiro Sugerido:")
-                st.success(res_s) # Exibe o texto na tela
-                st.link_button("📲 Enviar Roteiro WhatsApp", f"https://api.whatsapp.com/send?text={urllib.parse.quote(res_s)}")
+                res_s = chamar_super_agente(f"Crie 3 stories sobre {ts} para {conf['nome_exibicao']}.")
+                st.success(res_s)
 
-    # ABA PERFIL
+    # --- ABA PERFIL (CORES E SENHA) ---
     with t_perf:
-        st.header("⚙️ Minha Conta")
-        st.write(f"Conectado como: **{st.session_state.email}**")
-        st.write(f"Status da Conta: **Ativo** ✨")
+        st.header("⚙️ Personalização e Segurança")
+        
+        # 🎨 Troca de Cor
+        st.subheader("🎨 Cor do Painel")
+        cor_selecionada = st.color_picker("Escolha a cor da sua igreja:", cor_atual)
+        if st.button("🖌️ Aplicar Nova Cor"):
+            st.session_state.cor_previa = cor_selecionada
+            st.rerun()
+        
+        st.divider()
+        
+        # 🔑 Troca de Senha
+        st.subheader("🔑 Alterar Senha")
+        with st.form("nova_senha"):
+            s_atual = st.text_input("Senha Atual", type="password")
+            s_nova = st.text_input("Nova Senha", type="password")
+            if st.form_submit_button("Atualizar Senha"):
+                df_u = carregar_usuarios()
+                # Localiza a linha do usuário logado
+                idx = df_u.index[df_u['email'].str.lower() == st.session_state.email.lower()].tolist()
+                if idx and str(df_u.at[idx[0], 'senha']) == s_atual:
+                    df_u.at[idx[0], 'senha'] = s_nova
+                    # Atualiza a planilha (não usa conn.create, usa conn.update)
+                    conn.update(spreadsheet=URL_PLANILHA, worksheet="usuarios", data=df_u)
+                    st.success("✅ Senha alterada com sucesso!")
+                else:
+                    st.error("❌ Senha atual incorreta.")
