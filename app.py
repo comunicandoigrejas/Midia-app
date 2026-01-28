@@ -106,21 +106,25 @@ if not st.session_state.logado:
 # ==========================================
 # AMBIENTE LOGADO
 # ==========================================
+# ... (código anterior do login)
 else:
+    # Este bloco só roda se o usuário estiver logado
     df_conf = carregar_configuracoes()
-    if st.session_state.perfil == "admin":
-        igreja_nome = st.sidebar.selectbox("Simular Igreja:", df_conf['nome_exibicao'].tolist())
-        conf = df_conf[df_conf['nome_exibicao'] == igreja_nome].iloc[0]
-    else:
-        conf = df_conf[df_conf['igreja_id'] == st.session_state.igreja_id].iloc[0]
-
-    # Aplicação do Tema
-    cor_atual = st.session_state.cor_previa if st.session_state.cor_previa else str(conf['cor_tema'])
-    if not cor_atual.startswith("#"): cor_atual = f"#{cor_atual}"
-    aplicar_tema(cor_atual)
-
-   with st.sidebar:
-        st.subheader(f"⛪ {conf['nome_exibicao']}") # Nome da igreja selecionada
+    
+    # A BARRA LATERAL PRECISA ESTAR ALINHADA AQUI (4 espaços para dentro do else)
+    with st.sidebar:
+        st.subheader(f"⛪ {conf['nome_exibicao']}")
+        
+        if st.button("🚪 LOGOUT", use_container_width=True, type="primary"):
+            st.session_state.clear()
+            st.rerun()
+            
+        st.divider()
+        st.link_button("📸 Instagram", conf['instagram_url'], use_container_width=True)
+    
+    # O restante das abas também segue este alinhamento
+    abas = st.tabs(["✨ Legendas", "🎬 Stories", "⚙️ Perfil"])
+    # ...
         
         # Botão de Logout
         if st.button("🚪 LOGOUT", use_container_width=True, type="primary"):
