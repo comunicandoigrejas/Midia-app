@@ -77,7 +77,7 @@ else:
     cor_atual = st.session_state.cor_previa if st.session_state.cor_previa else str(conf['cor_tema'])
     if not cor_atual.startswith("#"): cor_atual = f"#{cor_atual}"
 
-    # --- 🛠️ CSS: POSICIONAMENTO E RECUO AVANÇADO ---
+    # --- 🛠️ CSS: SEPARAÇÃO DE BOTÕES E RECUO ---
     st.markdown(f"""
         <style>
         /* 1. Remove ícones do topo direito */
@@ -85,10 +85,10 @@ else:
             display: none !important;
         }}
 
-        /* 2. BOTÃO DE ABRIR (Movidp para 25% para sair do meio/logo) */
+        /* 2. BOTÃO DE ABRIR (Movidp para 10% para não bater no Logout) */
         [data-testid="stSidebarCollapseButton"] {{
             position: fixed !important;
-            top: 25% !important; 
+            top: 10% !important; 
             left: 0px !important;
             z-index: 1000000 !important;
             background-color: {cor_atual} !important;
@@ -102,7 +102,7 @@ else:
         /* 3. BOTÃO DE FECHAR (Alinhado com a sidebar aberta) */
         section[data-testid="stSidebar"] button {{
             position: fixed !important;
-            top: 25% !important;
+            top: 10% !important;
             left: 336px !important; 
             z-index: 1000001 !important;
             background-color: {cor_atual} !important;
@@ -112,11 +112,15 @@ else:
             height: 50px !important;
         }}
 
-        /* 4. RECUO DA PÁGINA PARA NÃO BATER NA SIDEBAR */
+        /* 4. RECUO DA PÁGINA E DA SIDEBAR */
         .block-container {{
-            margin-left: 5% !important; /* Afasta a página da lateral esquerda */
-            padding-left: 2rem !important;
+            margin-left: 6% !important;
             max-width: 90% !important;
+        }}
+        
+        /* Empurra o conteúdo interno da sidebar para baixo para não bater no botão */
+        [data-testid="stSidebarUserContent"] {{
+            padding-top: 5rem !important;
         }}
 
         header[data-testid="stHeader"] {{ background-color: rgba(0,0,0,0) !important; border: none !important; }}
