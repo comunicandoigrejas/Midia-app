@@ -20,13 +20,34 @@ if "cor_previa" not in st.session_state: st.session_state.cor_previa = None
 for chave in ["perfil", "igreja_id", "email"]:
     if chave not in st.session_state: st.session_state[chave] = ""
 
-# --- 🛠️ CSS: INTERFACE BLINDADA (SEM FORK/GITHUB E COM BOTÃO SIDEBAR) ---
+# --- 🛠️ CSS CIRÚRGICO: REMOVE APENAS O FORK E GITHUB (LADO DIREITO) ---
 st.markdown("""
     <style>
-    [data-testid="stHeaderActionElements"], .stAppDeployButton, #MainMenu { display: none !important; }
-    header[data-testid="stHeader"] { background-color: rgba(0,0,0,0) !important; color: inherit !important; }
-    footer { visibility: hidden !important; }
-    .block-container { padding-top: 2rem !important; }
+    /* Esconde especificamente o grupo de botões Fork/GitHub no topo direito */
+    [data-testid="stHeaderActionElements"] {
+        display: none !important;
+    }
+
+    /* Esconde o botão de Deploy e o menu de 3 pontos */
+    .stAppDeployButton, #MainMenu {
+        display: none !important;
+    }
+
+    /* Garante que o cabeçalho seja transparente para manter o botão da sidebar visível */
+    header[data-testid="stHeader"] {
+        background-color: rgba(0,0,0,0) !important;
+        color: inherit !important;
+    }
+
+    /* Remove o rodapé 'Made with Streamlit' */
+    footer {
+        visibility: hidden !important;
+    }
+
+    /* Ajuste de margem para o conteúdo começar de forma elegante */
+    .block-container {
+        padding-top: 2rem !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -40,7 +61,7 @@ except Exception as e:
     st.error("Erro de conexão. Verifique os Secrets.")
     st.stop()
 
-# --- FUNÇÕES DE APOIO ---
+# --- FUNÇÕES SUPORTE ---
 def carregar_usuarios(): return conn.read(spreadsheet=URL_PLANILHA, worksheet="usuarios", ttl=0)
 def carregar_configuracoes(): return conn.read(spreadsheet=URL_PLANILHA, worksheet="configuracoes", ttl=0)
 
@@ -81,7 +102,7 @@ if not st.session_state.logado:
                     st.session_state.igreja_id = u.iloc[0]['igreja_id']
                     st.session_state.email = em
                     st.rerun()
-                else: st.error("🚫 Conta inativa. Procure o suporte.")
+                else: st.error("🚫 Conta inativa.")
             else: st.error("❌ E-mail ou senha incorretos.")
 
 # ==========================================
@@ -90,13 +111,11 @@ if not st.session_state.logado:
 else:
     df_conf = carregar_configuracoes()
     if st.session_state.perfil == "admin":
-        st.sidebar.subheader("👑 Painel Master")
         igreja_nome = st.sidebar.selectbox("Simular Igreja:", df_conf['nome_exibicao'].tolist())
         conf = df_conf[df_conf['nome_exibicao'] == igreja_nome].iloc[0]
     else:
         conf = df_conf[df_conf['igreja_id'] == st.session_state.igreja_id].iloc[0]
 
-    # Definição de Cor (Evita NameError)
     cor_atual = st.session_state.cor_previa if st.session_state.cor_previa else str(conf['cor_tema'])
     if not cor_atual.startswith("#"): cor_atual = f"#{cor_atual}"
     aplicar_tema(cor_atual)
@@ -117,66 +136,44 @@ else:
     if st.session_state.perfil == "admin": t_master, t_gen, t_story, t_perf = obj_abas
     else: t_gen, t_story, t_perf = obj_abas
 
-    # --- ABA MASTER ---
-    if st.session_state.perfil == "admin":
-        with t_master:
-            st.header("📊 Gestão Master")
-            st.dataframe(df_conf, use_container_width=True, hide_index=True)
-
-    # --- ABA 1: LEGENDAS (COMPLETA) ---
+    # --- ABA 1: LEGENDAS (RESTAURADA E COMPLETA) ---
     with t_gen:
         st.header("✨ Gerador de Conteúdo ARA")
-        
-        # Grid de Opções
         col1, col2 = st.columns(2)
         with col1:
-            rede = st.selectbox("Rede Social", ["Instagram", "Facebook", "LinkedIn", "WhatsApp"])
-            tom = st.selectbox("Tom da Mensagem", ["Inspirador", "Pentecostal", "Jovem", "Teológico", "Informativo"])
+            rede = st.selectbox("Rede Social", ["Instagram", "Facebook", "WhatsApp"])
+            tom = st.selectbox("Tom", ["Inspirador", "Pentecostal", "Jovem", "Teológico"])
         with col2:
             ver = st.text_input("📖 Versículo Base (ARA)", placeholder="Ex: João 10:10")
-            hashtags_extra = st.text_input("🏷️ Hashtags Extras", placeholder="Ex: #fé #church")
+            ht_extra = st.text_input("🏷️ Hashtags Extras")
         
-        tema_post = st.text_area("📝 Descreva o tema da postagem (O que aconteceu ou vai acontecer?)")
-        
+        tema_post = st.text_area("📝 Sobre o que vamos postar?")
         if st.button("🚀 Criar Minha Legenda"):
             if tema_post:
-                prompt_completo = (
-                    f"Atue como um especialista em mídias sociais para igrejas. "
-                    f"Gere uma legenda para {rede}, com tom {tom}. "
-                    f"O tema é: {tema_post}. "
-                    f"Inclua o versículo: {ver}. "
-                    f"Use a Bíblia Almeida Revista e Atualizada (ARA). "
-                    f"Hashtags obrigatórias: {conf['hashtags_fixas']} {hashtags_extra}"
-                )
-                resultado = chamar_super_agente(prompt_completo)
-                st.markdown("---")
-                st.subheader("📝 Sugestão do Super Agente:")
+                prompt = f"Gere legenda para {rede}, tom {tom}, tema {tema_post}, versículo {ver}. Bíblia ARA. Use hashtags: {conf['hashtags_fixas']} {ht_extra}"
+                resultado = chamar_super_agente(prompt)
                 st.info(resultado)
-                st.link_button("📲 Enviar para WhatsApp", f"https://api.whatsapp.com/send?text={urllib.parse.quote(resultado)}")
-            else:
-                st.warning("Por favor, descreva o tema da postagem.")
+                st.link_button("📲 Enviar WhatsApp", f"https://api.whatsapp.com/send?text={urllib.parse.quote(resultado)}")
 
     # --- ABA 2: STORIES ---
     with t_story:
-        st.header("🎬 Roteiro de Stories (3 Telas)")
-        t_story_input = st.text_input("Qual o tema da sequência?")
-        if st.button("🎬 Gerar Roteiro"):
-            if t_story_input:
-                prompt_s = f"Crie um roteiro de 3 stories sobre {t_story_input} para a igreja {conf['nome_exibicao']}. Use emojis e Bíblia ARA."
-                res_s = chamar_super_agente(prompt_s)
+        st.header("🎬 Super Agente: Stories")
+        ts = st.text_input("Tema dos Stories")
+        if st.button("🎬 Criar Roteiro"):
+            if ts:
+                res_s = chamar_super_agente(f"Crie 3 stories sobre {ts} para {conf['nome_exibicao']}.")
                 st.success(res_s)
-                st.link_button("📲 Enviar Roteiro", f"https://api.whatsapp.com/send?text={urllib.parse.quote(res_s)}")
 
     # --- ABA 3: PERFIL ---
     with t_perf:
-        st.header("⚙️ Personalização e Segurança")
-        nova_cor = st.color_picker("🎨 Escolha a cor do seu painel:", cor_atual)
+        st.header("⚙️ Personalização")
+        nova_cor = st.color_picker("Cor da igreja:", cor_atual)
         if st.button("🖌️ Aplicar Cor"):
             st.session_state.cor_previa = nova_cor
             st.rerun()
         
         st.divider()
-        with st.form("f_senha"):
+        with st.form("form_senha"):
             st.subheader("🔑 Alterar Senha")
             s_at = st.text_input("Senha Atual", type="password")
             s_nv = st.text_input("Nova Senha", type="password")
@@ -187,4 +184,4 @@ else:
                     df_u.at[idx[0], 'senha'] = s_nv
                     conn.update(spreadsheet=URL_PLANILHA, worksheet="usuarios", data=df_u)
                     st.success("✅ Senha alterada!")
-                else: st.error("❌ Erro na senha atual.")
+                else: st.error("❌ Erro na senha.")
