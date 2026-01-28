@@ -8,19 +8,38 @@ from datetime import datetime
 # 1. CONFIGURAÇÕES DE PÁGINA
 st.set_page_config(page_title="Comunicando Igrejas Pro", page_icon="⚡", layout="wide")
 
+# --- CSS PARA LIMPAR A TELA (RETIRAR FORK E MENU GITHUB) ---
+st.markdown("""
+    <style>
+    /* Esconde o cabeçalho onde fica o botão de Fork/GitHub */
+    header {visibility: hidden !important;}
+    
+    /* Esconde o menu de 3 pontos (MainMenu) */
+    #MainMenu {visibility: hidden !important;}
+    
+    /* Esconde o rodapé 'Made with Streamlit' */
+    footer {visibility: hidden !important;}
+    
+    /* Ajusta o espaço que sobra no topo para o conteúdo não ficar colado */
+    .block-container {
+        padding-top: 1rem !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
 # Inicialização de variáveis de estado
 if "logado" not in st.session_state:
     st.session_state.logado = False
 if "cor_previa" not in st.session_state:
     st.session_state.cor_previa = None
 
-# 2. CONEXÕES SEGURAS (Service Account)
+# 2. CONEXÕES SEGURAS
 try:
     conn = st.connection("gsheets", type=GSheetsConnection)
     client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
     URL_PLANILHA = st.secrets["connections"]["gsheets"]["spreadsheet"]
 except Exception as e:
-    st.error(f"Erro de Conexão: {e}. Verifique os Secrets.")
+    st.error(f"Erro de Conexão: {e}.")
     st.stop()
 
 # --- FUNÇÕES DE DADOS ---
@@ -43,12 +62,11 @@ def aplicar_tema(cor):
         .stButton>button {{ background-color: {cor}; color: white; border-radius: 8px; border: none; font-weight: bold; }}
         .stButton>button:hover {{ opacity: 0.8; color: white; }}
         .stTabs [aria-selected="true"] {{ background-color: {cor}; color: white !important; border-radius: 5px; }}
-        header {{visibility: hidden;}} footer {{visibility: hidden;}}
         </style>
     """, unsafe_allow_html=True)
 
 # ==========================================
-# TELA DE LOGIN & RECUPERAÇÃO
+# TELA DE LOGIN
 # ==========================================
 if not st.session_state.logado:
     st.title("🚀 Comunicando Igrejas")
@@ -62,6 +80,7 @@ if not st.session_state.logado:
                 df_u = carregar_usuarios()
                 user = df_u[(df_u['email'].str.lower() == email_in.lower()) & (df_u['senha'].astype(str) == str(senha_in))]
                 if not user.empty:
+                    # Conforme image_f91efa.png, o status deve ser 'ativo'
                     if str(user.iloc[0]['status']).lower() == 'ativo':
                         st.session_state.logado = True
                         st.session_state.igreja_id = user.iloc[0]['igreja_id']
@@ -72,11 +91,8 @@ if not st.session_state.logado:
                 else: st.error("E-mail ou senha incorretos.")
 
     with tab_rec:
-        st.subheader("Esqueceu sua senha?")
-        st.write("Não se preocupe! Clique no botão abaixo para falar com o suporte da **Comunicando Igrejas** e solicitar uma nova senha.")
-        # NÚMERO ATUALIZADO AQUI
-        link_recuperar = "https://wa.me/551937704733?text=Olá!%20Esqueci%20minha%20senha%20no%20painel%20da%20Comunicando%20Igrejas."
-        st.link_button("🔑 Solicitar Nova Senha via WhatsApp", link_recuperar)
+        st.write("Solicite uma nova senha ao suporte oficial.")
+        st.link_button("🔑 Solicitar Nova Senha (WhatsApp)", "https://wa.me/551937704733?text=Olá, esqueci minha senha.")
 
 # ==========================================
 # AMBIENTE LOGADO
@@ -96,19 +112,12 @@ else:
             st.session_state.logado = False
             st.rerun()
 
-    # --- LEMBRETE DO DIA ---
-    df_cal_hoje = carregar_calendario()
-    hoje = datetime.now().strftime('%Y-%m-%d')
-    tarefa_hoje = df_cal_hoje[(df_cal_hoje['igreja_id'] == st.session_state.igreja_id) & (df_cal_hoje['data'].astype(str) == hoje)]
-    
-    if not tarefa_hoje.empty:
-        st.warning(f"📌 **Lembrete de Hoje:** Você tem {len(tarefa_hoje)} postagem(ns) agendada(s). Confira na aba Calendário!")
-
+    # ABAS PRINCIPAIS
     tab_gen, tab_story, tab_cal, tab_perf = st.tabs(["✨ Legendas", "🎬 Stories", "📅 Calendário", "⚙️ Perfil"])
 
     # --- ABA 1: GERADOR ---
     with tab_gen:
-        st.header("Gerador de Legendas ARA")
+        st.header("Gerador de Conteúdo Profissional")
         c1, c2 = st.columns(2)
         with c1:
             rede = st.selectbox("Rede Social", ["Instagram", "Facebook", "LinkedIn"])
@@ -118,7 +127,7 @@ else:
             hashtags_ex = st.text_input("Hashtags Extras", placeholder="Separe por espaço")
         
         brief = st.text_area("Sobre o que é o post?")
-        if st.button("✨ Gerar Conteúdo"):
+        if st.button("✨ Gerar Conteúdo (+50 palavras)"):
             if brief:
                 with st.spinner("IA Escrevendo..."):
                     prompt = f"Social Media Cristão. Legenda {rede}, tom {estilo}, Bíblia ARA. +50 palavras. Tema: {brief}. Versículo: {ver}. Use emojis. Use hashtags: {conf['hashtags_fixas']} {hashtags_ex}."
@@ -139,7 +148,7 @@ else:
 
     # --- ABA 3: CALENDÁRIO ---
     with tab_cal:
-        st.header("📅 Agendamento de Postagens")
+        st.header("📅 Agendamento")
         with st.expander("➕ Nova Postagem"):
             with st.form("form_cal"):
                 d_post = st.date_input("Data", datetime.now())
@@ -157,9 +166,10 @@ else:
         meu_cal = df_ver_cal[df_ver_cal['igreja_id'] == st.session_state.igreja_id].sort_values(by='data')
         st.dataframe(meu_cal[['data', 'rede_social', 'tema', 'status']], use_container_width=True, hide_index=True)
 
-    # --- ABA 4: PERFIL (CORES E SENHA) ---
+    # --- ABA 4: PERFIL ---
     with tab_perf:
-        st.header("🎨 Personalização e Segurança")
+        st.header("🎨 Personalização")
+        # Dicionário de cores curadas
         paleta = {
             "Azul Catedral": "#2C3E50", "Vinho Clássico": "#7B241C", "Verde Oliva": "#556B2F",
             "Roxo Imperial": "#4A235A", "Bronze": "#A0522D", "Grafite": "#212121",
@@ -177,20 +187,20 @@ else:
         c_pick = st.color_picker("Cor personalizada:", st.session_state.get('cor_previa', cor_tema))
         if st.button("👁️ Testar Visual"): aplicar_tema(c_pick)
         
-        # NÚMERO ATUALIZADO AQUI TAMBÉM
         msg_cor = urllib.parse.quote(f"Olá! Gostaria de definir a cor permanente da {conf['nome_exibicao']} como {c_pick}")
         st.link_button("💾 Salvar Cor (WhatsApp)", f"https://wa.me/551937704733?text={msg_cor}")
 
         st.divider()
-        st.subheader("🔐 Alterar Minha Senha")
+        st.subheader("🔐 Alterar Senha")
         with st.form("form_senha"):
             s_atual = st.text_input("Senha Atual", type="password")
             s_nova = st.text_input("Nova Senha", type="password")
             if st.form_submit_button("Atualizar Senha"):
                 df_u_pw = carregar_usuarios()
+                # Localiza a linha correta pelo e-mail
                 idx = df_u_pw.index[df_u_pw['email'].str.lower() == st.session_state.email.lower()].tolist()
                 if idx and str(df_u_pw.at[idx[0], 'senha']) == s_atual:
                     df_u_pw.at[idx[0], 'senha'] = s_nova
                     conn.update(spreadsheet=URL_PLANILHA, worksheet="usuarios", data=df_u_pw)
-                    st.success("Senha alterada!")
+                    st.success("Senha alterada com sucesso!")
                 else: st.error("Senha atual incorreta.")
