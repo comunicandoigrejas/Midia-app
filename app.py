@@ -22,7 +22,7 @@ for chave in ["perfil", "igreja_id", "email"]:
 # --- 🛠️ CSS DE PROTEÇÃO MÁXIMA: ELIMINA CABEÇALHO E RODAPÉ ---
 st.markdown("""
     <style>
-    /* Esconde o cabeçalho inteiro (remove Fork, GitHub, Menu e ) */
+    /* Esconde o cabeçalho inteiro (remove Fork, GitHub,) */
     [data-testid="stHeader"] {
         display: none !important;
     }
