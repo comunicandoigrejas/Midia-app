@@ -19,37 +19,47 @@ if "cor_previa" not in st.session_state: st.session_state.cor_previa = None
 for chave in ["perfil", "igreja_id", "email"]:
     if chave not in st.session_state: st.session_state[chave] = ""
 
-# --- CSS REFORÇADO: REMOVE GITHUB, FORK, LINK DE CÓDIGO E MENU ---
+# --- CSS ULTRA-REFORÇADO: BLOQUEIO TOTAL DE LINKS EXTERNOS NO HEADER ---
 st.markdown("""
     <style>
-    /* Remove todos os botões de ação do topo (GitHub, Fork, View Source) */
+    /* 1. Remove toda a área de botões do topo (GitHub, Fork, etc) */
     [data-testid="stHeaderActionElements"] {
         display: none !important;
     }
-    
-    /* Remove o botão de Deploy e o menu de 3 pontos */
+
+    /* 2. Remove especificamente qualquer link que aponte para o GitHub no header */
+    header a[href*="github.com"] {
+        display: none !important;
+    }
+
+    /* 3. Esconde o botão de Deploy e o menu de 3 pontos */
     .stAppDeployButton, #MainMenu {
         display: none !important;
     }
 
-    /* Torna o cabeçalho invisível para não mostrar a barra cinza */
+    /* 4. Torna o cabeçalho invisível para não mostrar a barra cinza de ferramentas */
     header[data-testid="stHeader"] {
         background-color: rgba(0,0,0,0) !important;
         color: transparent !important;
         border: none !important;
     }
 
-    /* Remove o rodapé do Streamlit */
+    /* 5. Garante que o ícone do GitHub dentro de botões também suma */
+    .st-emotion-cache-12fmjuu, .st-emotion-cache-1avf0yq {
+        display: none !important;
+    }
+
+    /* 6. Remove o rodapé 'Made with Streamlit' */
     footer {
         visibility: hidden !important;
     }
 
-    /* Ajuste para o conteúdo começar do topo de forma limpa */
+    /* Ajuste de respiro no topo */
     .block-container {
-        padding-top: 1rem !important;
+        padding-top: 1.5rem !important;
     }
     </style>
-    """, unsafe_allow_html=True)
+    """, unsafe_allow_html=True
 
 # 3. CONEXÕES
 try:
