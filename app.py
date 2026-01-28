@@ -79,48 +79,66 @@ else:
     else:
         conf = df_conf[df_conf['igreja_id'] == st.session_state.igreja_id].iloc[0]
 
-    # Definição de Cor do Tema
     cor_atual = st.session_state.cor_previa if st.session_state.cor_previa else str(conf['cor_tema'])
     if not cor_atual.startswith("#"): cor_atual = f"#{cor_atual}"
 
-    # --- 🛠️ CSS DINÂMICO: BOTÃO CENTRALIZADO E PROTEÇÃO ---
+    # --- 🛠️ CSS AVANÇADO: BOTÃO FLUTUANTE DUPLO (ABRIR E FECHAR) ---
     st.markdown(f"""
         <style>
-        /* 1. Esconde os ícones de desenvolvedor no topo direito */
+        /* 1. Esconde ícones de desenvolvedor */
         [data-testid="stHeaderActionElements"], .stAppDeployButton, #MainMenu {{
             display: none !important;
         }}
 
-        /* 2. MOVE O BOTÃO DE RECOLHER PARA O CENTRO DA LATERAL ESQUERDA */
+        /* 2. BOTÃO QUANDO A SIDEBAR ESTÁ FECHADA (ABRIR) */
         [data-testid="stSidebarCollapseButton"] {{
             position: fixed !important;
             top: 50% !important;
             left: 0px !important;
             transform: translateY(-50%) !important;
-            z-index: 9999999 !important;
+            z-index: 1000000 !important;
             background-color: {cor_atual} !important;
             color: white !important;
-            border-radius: 0 10px 10px 0 !important;
-            width: 45px !important;
-            height: 50px !important;
+            border-radius: 0 12px 12px 0 !important;
+            width: 40px !important;
+            height: 60px !important;
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
-            box-shadow: 2px 2px 10px rgba(0,0,0,0.3) !important;
+            box-shadow: 4px 0px 10px rgba(0,0,0,0.2) !important;
+            border: 1px solid rgba(255,255,255,0.2) !important;
         }}
 
-        /* 3. Cabeçalho invisível */
-        header[data-testid="stHeader"] {{
-            background-color: rgba(0,0,0,0) !important;
-            border: none !important;
+        /* 3. BOTÃO QUANDO A SIDEBAR ESTÁ ABERTA (FECHAR) */
+        /* Localiza o botão dentro do cabeçalho da própria sidebar */
+        [data-testid="stSidebar"] button[kind="header"] {{
+            position: fixed !important;
+            top: 50% !important;
+            /* Ele fica na borda direita da sidebar aberta */
+            left: 335px !important; 
+            transform: translateY(-50%) !important;
+            z-index: 1000001 !important;
+            background-color: {cor_atual} !important;
+            color: white !important;
+            border-radius: 0 12px 12px 0 !important;
+            width: 40px !important;
+            height: 60px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            box-shadow: 4px 0px 10px rgba(0,0,0,0.2) !important;
+        }}
+        
+        /* Ajuste para telas menores (mobile) se necessário */
+        @media (max-width: 768px) {{
+            [data-testid="stSidebar"] button[kind="header"] {{ left: 255px !important; }}
         }}
 
-        /* 4. Estilos de botões e Tabs usando a cor do tema */
+        /* 4. Estilo Geral */
+        header[data-testid="stHeader"] {{ background-color: rgba(0,0,0,0) !important; }}
         .stButton>button {{ background-color: {cor_atual}; color: white; border-radius: 8px; font-weight: bold; }}
         .stTabs [aria-selected="true"] {{ background-color: {cor_atual}; color: white !important; border-radius: 5px; }}
-        
         footer {{ visibility: hidden !important; }}
-        .block-container {{ padding-top: 2rem !important; }}
         </style>
     """, unsafe_allow_html=True)
 
@@ -133,14 +151,9 @@ else:
         st.link_button("📸 Instagram", str(conf['instagram_url']), use_container_width=True)
 
     # ABAS
-    lista_abas = ["✨ Legendas", "🎬 Stories", "⚙️ Perfil"]
-    if st.session_state.perfil == "admin": lista_abas.insert(0, "📊 Master")
-    obj_abas = st.tabs(lista_abas)
+    t_gen, t_story, t_perf = st.tabs(["✨ Legendas", "🎬 Stories", "⚙️ Perfil"])
 
-    if st.session_state.perfil == "admin": t_master, t_gen, t_story, t_perf = obj_abas
-    else: t_gen, t_story, t_perf = obj_abas
-
-    # --- ABA 1: LEGENDAS (COMPLETA ARA) ---
+    # --- ABA 1: LEGENDAS (ARA) ---
     with t_gen:
         st.header("✨ Gerador de Conteúdo ARA")
         col1, col2 = st.columns(2)
@@ -175,17 +188,3 @@ else:
         if st.button("🖌️ Aplicar Cor"):
             st.session_state.cor_previa = nova_cor
             st.rerun()
-        
-        st.divider()
-        with st.form("form_senha"):
-            st.subheader("🔑 Alterar Senha")
-            s_at = st.text_input("Senha Atual", type="password")
-            s_nv = st.text_input("Nova Senha", type="password")
-            if st.form_submit_button("Atualizar"):
-                df_u = carregar_usuarios()
-                idx = df_u.index[df_u['email'].str.lower() == st.session_state.email.lower()].tolist()
-                if idx and str(df_u.at[idx[0], 'senha']) == s_at:
-                    df_u.at[idx[0], 'senha'] = s_nv
-                    conn.update(spreadsheet=URL_PLANILHA, worksheet="usuarios", data=df_u)
-                    st.success("✅ Senha alterada!")
-                else: st.error("❌ Erro na senha.")
