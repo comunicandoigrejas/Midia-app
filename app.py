@@ -160,8 +160,9 @@ else:
                 res_s = chamar_super_agente(f"Crie 3 stories sobre {ts} para {conf['nome_exibicao']}.")
                 st.success(res_s)
 
-    with t_perf:
-        st.header("⚙️ Personalização e Segurança")
+   with t_perf:
+        st.header("⚙️ Personalização")
+        # Agora o cor_atual existe e o erro desaparece!
         nova_cor = st.color_picker("Cor da igreja:", cor_atual)
         if st.button("🖌️ Aplicar Cor"):
             st.session_state.cor_previa = nova_cor
