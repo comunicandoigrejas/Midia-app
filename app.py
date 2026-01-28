@@ -37,7 +37,7 @@ st.markdown("""
     /* 3. LOCALIZA E MOVE O BOTÃO DE RECOLHER (O símbolo '>') */
     /* Deslocamos ele para baixo para não ser afetado pela limpeza do topo */
     [data-testid="stSidebarCollapseButton"] {
-        top: 300px !important;
+        top: 10px !important;
         left: 100px !important;
         background-color: rgba(255,255,255,0.1);
         border-radius: 50%;
