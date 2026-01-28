@@ -17,16 +17,22 @@ st.set_page_config(
 # CSS para esconder o menu do Streamlit e o botão de Fork do GitHub
 st.markdown("""
     <style>
-    header {visibility: hidden !important;}
-    #MainMenu {visibility: hidden !important;}
-    footer {visibility: hidden !important;}
-    .block-container {padding-top: 1rem !important;}
+    /* Esconde o menu de 3 pontos e o link do Streamlit, mas deixa o botão da barra lateral */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    
+    /* Destaca o botão de abrir/fechar a barra lateral (o > e o X) */
+    .st-emotion-cache-15ec669 { 
+        background-color: rgba(0,0,0,0.05); 
+        border-radius: 50%;
+    }
+
+    /* Garante que o conteúdo não 'suba' demais e esconda o botão lateral */
+    .block-container {
+        padding-top: 2rem !important;
+    }
     </style>
     """, unsafe_allow_html=True)
-
-# 2. INICIALIZAÇÃO DE VARIÁVEIS DE SESSÃO
-if "logado" not in st.session_state: st.session_state.logado = False
-if "cor_previa" not in st.session_state: st.session_state.cor_previa = None
 
 # 3. CONEXÕES (Secrets)
 try:
