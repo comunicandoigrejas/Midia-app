@@ -6,7 +6,7 @@ import pandas as pd
 import time
 from datetime import datetime
 
-# 1. CONFIGURAÇÃO DE PÁGINA (Deve ser o primeiro comando)
+# 1. CONFIGURAÇÃO DE PÁGINA
 st.set_page_config(
     page_title="Comunicando Igrejas Pro", 
     page_icon="⚡", 
@@ -14,7 +14,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 2. INICIALIZAÇÃO DE SEGURANÇA (Prevenção de erros de estado)
+# 2. INICIALIZAÇÃO DE ESTADO
 for chave in ["logado", "perfil", "igreja_id", "email"]:
     if chave not in st.session_state:
         st.session_state[chave] = False if chave == "logado" else ""
@@ -30,39 +30,39 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 3. CONEXÕES (Ajuste Crítico aqui)
+# 3. CONEXÕES (Sem o argumento problemático)
 try:
-    # Capturamos a URL diretamente para vincular à conexão
-    LINK_PLANILHA = st.secrets["connections"]["gsheets"]["spreadsheet"]
+    # Apenas criamos a conexão simples
+    conn = st.connection("gsheets", type=GSheetsConnection)
     
-    # Criamos a conexão já 'anexando' a planilha a ela
-    conn = st.connection("gsheets", type=GSheetsConnection, spreadsheet=LINK_PLANILHA)
+    # Armazenamos a URL em uma variável global para uso constante
+    URL_PLANILHA = st.secrets["connections"]["gsheets"]["spreadsheet"]
     
     client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
     ASSISTANT_ID = st.secrets["OPENAI_ASSISTANT_ID"]
 except Exception as e:
-    st.error(f"⚠️ Erro nos Secrets ou Conexão: {e}")
+    st.error(f"⚠️ Erro nos Secrets: {e}")
     st.stop()
 
 # --- FUNÇÕES DE APOIO ---
 def carregar_usuarios(): 
-    return conn.read(worksheet="usuarios", ttl=0)
+    return conn.read(spreadsheet=URL_PLANILHA, worksheet="usuarios", ttl=0)
 
 def carregar_configuracoes(): 
-    return conn.read(worksheet="configuracoes", ttl=0)
+    return conn.read(spreadsheet=URL_PLANILHA, worksheet="configuracoes", ttl=0)
 
 def carregar_calendario():
     try: 
-        return conn.read(worksheet="calendario", ttl=0)
+        return conn.read(spreadsheet=URL_PLANILHA, worksheet="calendario", ttl=0)
     except: 
         return pd.DataFrame(columns=['igreja_id', 'data', 'rede_social', 'tema', 'status'])
 
 # ==========================================
-# INTERFACE DE LOGIN (TRAVA DE BLOQUEIO ATIVA)
+# INTERFACE DE LOGIN (TRAVA DE BLOQUEIO)
 # ==========================================
 if not st.session_state.logado:
     st.title("🚀 Comunicando Igrejas")
-    t1, t2 = st.tabs(["Entrar", "Recuperar Senha"])
+    t1, t2 = st.tabs(["Entrar", "Suporte"])
     
     with t1:
         with st.form("login_form"):
@@ -73,7 +73,7 @@ if not st.session_state.logado:
                 u = df_u[(df_u['email'].str.lower() == em.lower()) & (df_u['senha'].astype(str) == str(se))]
                 
                 if not u.empty:
-                    # LÓGICA DE BLOQUEIO: Se for nulo ou diferente de 'ativo', bloqueia.
+                    # Limpeza rigorosa do status
                     status_raw = u.iloc[0]['status']
                     status_db = str(status_raw).strip().lower() if pd.notnull(status_raw) else "inativo"
                     
@@ -84,11 +84,11 @@ if not st.session_state.logado:
                         st.session_state.email = em
                         st.rerun()
                     else:
-                        st.error(f"🚫 ACESSO NEGADO: Sua conta está '{status_db}'. Procure o suporte.")
+                        st.error(f"🚫 ACESSO NEGADO: Status '{status_db}'. Procure o suporte.")
                 else:
                     st.error("❌ E-mail ou senha incorretos.")
     with t2:
-        st.link_button("📲 Suporte via WhatsApp", "https://wa.me/551937704733")
+        st.link_button("📲 WhatsApp Suporte", "https://wa.me/551937704733")
 
 # ==========================================
 # AMBIENTE LOGADO
@@ -96,10 +96,10 @@ if not st.session_state.logado:
 else:
     df_conf = carregar_configuracoes()
     
-    # Identificação de Perfil
+    # Define Perfil
     if st.session_state.perfil == "admin":
         st.sidebar.subheader("👑 Modo Administrador")
-        igreja_nome = st.sidebar.selectbox("Escolher Igreja:", df_conf['nome_exibicao'].tolist())
+        igreja_nome = st.sidebar.selectbox("Simular Igreja:", df_conf['nome_exibicao'].tolist())
         conf = df_conf[df_conf['nome_exibicao'] == igreja_nome].iloc[0]
     else:
         conf = df_conf[df_conf['igreja_id'] == st.session_state.igreja_id].iloc[0]
@@ -113,15 +113,14 @@ else:
     abas = st.tabs(["✨ Legendas", "🎬 Stories", "📅 Calendário", "⚙️ Perfil"])
     t_gen, t_story, t_cal, t_perf = abas
 
-    # --- ABA 3: CALENDÁRIO (RESOLVENDO O VALUEERROR) ---
+    # --- ABA CALENDÁRIO (FIXO) ---
     with t_cal:
         st.header("📅 Agendamento")
         with st.expander("➕ Novo Post"):
-            with st.form("form_agendar_definitivo"):
+            with st.form("form_agendar_v3"):
                 dp = st.date_input("Data", datetime.now())
                 tp = st.text_input("Assunto")
                 if st.form_submit_button("Confirmar Agendamento"):
-                    # Criamos o DataFrame de dados novos
                     dados_novos = pd.DataFrame([{
                         "igreja_id": conf['igreja_id'], 
                         "data": dp.strftime('%Y-%m-%d'), 
@@ -130,20 +129,24 @@ else:
                         "status": "Pendente"
                     }])
                     
-                    # O PULO DO GATO: Usar a conexão vinculada ao segredo diretamente
+                    # Passamos a URL_PLANILHA explicitamente no método create
                     try:
                         conn.create(
-                            spreadsheet=st.secrets["connections"]["gsheets"]["spreadsheet"], 
+                            spreadsheet=URL_PLANILHA, 
                             worksheet="calendario", 
                             data=dados_novos
                         )
-                        st.success("✅ Agendado com sucesso!")
+                        st.success("✅ Salvo com sucesso!")
                         time.sleep(1)
                         st.rerun()
-                    except Exception as error_save:
-                        st.error(f"Erro ao salvar: {error_save}")
+                    except Exception as e_save:
+                        st.error(f"Erro ao salvar: {e_save}")
         
-        # Exibição do Calendário
+        # Exibição
         df_c = carregar_calendario()
         df_filtrado = df_c[df_c['igreja_id'].astype(str) == str(conf['igreja_id'])]
         st.dataframe(df_filtrado, use_container_width=True, hide_index=True)
+
+    with t_perf:
+        st.header("⚙️ Minha Conta")
+        st.write(f"Conectado como: **{st.session_state.email}**")
