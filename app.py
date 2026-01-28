@@ -4,143 +4,106 @@ from openai import OpenAI
 import urllib.parse
 import pandas as pd
 
-# --- BLOCO DE DIAGNÓSTICO TEMPORÁRIO ---
-st.write("### 🔍 Diagnóstico de Conexão")
-if "connections" in st.secrets:
-    st.write("✅ Gaveta 'connections' encontrada!")
-    if "gsheets" in st.secrets["connections"]:
-        st.write("✅ Pasta 'gsheets' encontrada!")
-        if "spreadsheet" in st.secrets["connections"]["gsheets"]:
-            st.write("✅ Link 'spreadsheet' encontrado!")
-        else:
-            st.error("❌ Link 'spreadsheet' NÃO encontrado dentro de gsheets.")
-    else:
-        st.error("❌ Pasta 'gsheets' NÃO encontrada dentro de connections.")
-else:
-    st.error("❌ Gaveta 'connections' NÃO encontrada nos Secrets.")
-# ---------------------------------------
-
-# 1. Configurações Iniciais
+# 1. Configurações de Layout
 st.set_page_config(page_title="Comunicando Igrejas - Painel", layout="wide")
 
-# 2. Conexão e Segurança
-# Buscamos a URL uma única vez para usar no app todo
+# Esconder elementos do Streamlit para um visual profissional
+st.markdown("<style>header {visibility: hidden;} #MainMenu {visibility: hidden;} footer {visibility: hidden;}</style>", unsafe_allow_html=True)
+
+# 2. Inicialização de Conexões
 try:
     URL_PLANILHA = st.secrets["connections"]["gsheets"]["spreadsheet"]
     conn = st.connection("gsheets", type=GSheetsConnection)
+    client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 except Exception as e:
-    st.error("🚨 Erro nos Secrets: O link da planilha não foi encontrado ou está formatado errado.")
+    st.error(f"Erro na inicialização: {e}")
     st.stop()
 
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-
-# --- FUNÇÕES DE BANCO DE DADOS (AGORA COM LINK EXPLÍCITO) ---
+# --- FUNÇÕES DE DADOS ---
 def carregar_usuarios():
-    # Passamos o link diretamente aqui para não ter erro
     return conn.read(spreadsheet=URL_PLANILHA, worksheet="usuarios")
 
 def carregar_configuracoes():
-    # Passamos o link diretamente aqui também
     return conn.read(spreadsheet=URL_PLANILHA, worksheet="configuracoes")
 
-# ... (Restante do seu código de login e abas segue abaixo)
-
-# --- LÓGICA DE ACESSO ---
+# --- LÓGICA DE SESSÃO ---
 if "logado" not in st.session_state:
     st.session_state.logado = False
 
+# --- TELA DE LOGIN ---
 if not st.session_state.logado:
     st.title("🚀 Comunicando Igrejas")
     st.subheader("Painel de Gestão de Mídia")
     
     with st.form("login_form"):
-        email_input = st.text_input("E-mail")
-        senha_input = st.text_input("Senha", type="password")
-        submit = st.form_submit_button("Acessar Sistema")
-        
-        if submit:
+        email_i = st.text_input("E-mail")
+        senha_i = st.text_input("Senha", type="password")
+        if st.form_submit_button("Acessar Sistema"):
             df_u = carregar_usuarios()
-            user = df_u[(df_u['email'] == email_input) & (df_u['senha'] == str(senha_input))]
+            # Validação simples (garantindo que senha seja tratada como texto)
+            user = df_u[(df_u['email'] == email_i) & (df_u['senha'].astype(str) == str(senha_i))]
             
             if not user.empty:
                 if user.iloc[0]['status'] == 'ativo':
                     st.session_state.logado = True
-                    st.session_state.email = email_input
                     st.session_state.perfil = user.iloc[0]['perfil']
                     st.session_state.igreja_id = user.iloc[0]['igreja_id']
+                    st.session_state.email = email_i
                     st.rerun()
                 else:
-                    st.error("Sua assinatura está inativa. Entre em contato com o suporte.")
+                    st.error("Assinatura inativa. Fale com o suporte.")
             else:
-                st.error("E-mail ou senha incorretos.")
+                st.error("Credenciais inválidas.")
 else:
-    # --- AMBIENTE LOGADO ---
+    # --- AMBIENTE LOGADO (MULTITENANCY) ---
     df_config = carregar_configuracoes()
-    # Busca config da igreja específica (ou de todas se for Master)
+    
+    # Identifica a igreja do usuário
     if st.session_state.perfil == "admin":
-        igreja_nome = "MASTER ADMIN"
+        st.sidebar.title("👑 MASTER ADMIN")
+        igreja_selecionada = st.sidebar.selectbox("Simular Igreja:", df_config['nome_exibicao'].tolist())
+        config = df_config[df_config['nome_exibicao'] == igreja_selecionada].iloc[0]
     else:
-        config_igreja = df_config[df_config['igreja_id'] == st.session_state.igreja_id].iloc[0]
-        igreja_nome = config_igreja['nome_exibicao']
+        config = df_config[df_config['igreja_id'] == st.session_state.igreja_id].iloc[0]
+        st.sidebar.title(f"📱 {config['nome_exibicao']}")
 
+    # Barra Lateral
     with st.sidebar:
-        st.title(f"📱 {igreja_nome}")
-        if st.session_state.perfil != "admin":
-            st.link_button("⛪ Instagram da Igreja", config_igreja['instagram_url'])
+        st.link_button("⛪ Instagram da Igreja", config['instagram_url'])
         st.divider()
-        st.link_button("🔧 By Comunicando Igrejas", "https://www.instagram.com/comunicandoigrejas/")
+        st.link_button("🔧 Suporte Comunicando", "https://www.instagram.com/comunicandoigrejas/")
         if st.button("🚪 Sair"):
             st.session_state.logado = False
             st.rerun()
 
-    # --- DEFINIÇÃO DAS ABAS ---
+    # --- ABAS DO SISTEMA ---
     if st.session_state.perfil == "admin":
-        abas = st.tabs(["👑 Master Admin", "✨ Gerador de Conteúdo"])
+        tab_admin, tab_gerador = st.tabs(["📊 Gestão Master", "✨ Gerador"])
+        with tab_admin:
+            st.write("### Painel do Proprietário")
+            st.dataframe(df_config) # Mostra todas as igrejas para o Admin
     else:
-        abas = st.tabs(["✨ Gerador de Conteúdo", "⚙️ Meu Perfil"])
+        tab_gerador, tab_perfil = st.tabs(["✨ Gerador", "⚙️ Perfil"])
 
-    # ---------------------------------------------------------
-    # ABA MASTER (SÓ O DONO VÊ)
-    # ---------------------------------------------------------
-    if st.session_state.perfil == "admin":
-        with abas[0]:
-            st.header("📊 Gestão de Clientes")
-            
-            col_a, col_b = st.columns(2)
-            with col_a:
-                st.metric("Total de Igrejas", len(df_config))
-            with col_b:
-                df_u = carregar_usuarios()
-                ativos = len(df_u[df_u['status'] == 'ativo'])
-                st.metric("Usuários Ativos", ativos)
-
-            st.subheader("Igrejas Cadastradas")
-            st.dataframe(df_config, use_container_width=True)
-
-            st.subheader("Gerenciar Usuários")
-            st.dataframe(df_u, use_container_width=True)
-            
-            st.info("💡 Para adicionar ou remover igrejas, basta editar sua Planilha Google e atualizar esta página.")
-
-    # ---------------------------------------------------------
-    # ABA GERADOR (TODOS VÊEM)
-    # ---------------------------------------------------------
-    indice_gerador = 1 if st.session_state.perfil == "admin" else 0
-    with abas[indice_gerador]:
-        st.header("🎨 Criador de Conteúdo")
+    # --- FERRAMENTA GERADORA ---
+    with tab_gerador:
+        st.header(f"Criando Conteúdo para: {config['nome_exibicao']}")
         
-        # Se for admin, ele pode escolher qual igreja simular
-        if st.session_state.perfil == "admin":
-            igreja_selecionada = st.selectbox("Simular Igreja:", df_config['nome_exibicao'].tolist())
-            config_atual = df_config[df_config['nome_exibicao'] == igreja_selecionada].iloc[0]
-        else:
-            config_atual = config_igreja
-
-        st.info(f"Gerando para: **{config_atual['nome_exibicao']}**")
+        versiculo = st.text_input("📖 Versículo Base")
+        tema = st.text_area("Sobre o que é o post?")
         
-        # Aqui entra o seu código original da IA (ARA, 30 palavras, Hashtags Fixas)
-        # Exemplo de como usar a hashtag da planilha:
-        hashtags_da_igreja = config_atual['hashtags_fixas']
-        
-        # ... [Restante do seu código da OpenAI que já funciona] ...
-        st.write(f"Hashtags que serão usadas: {hashtags_da_igreja}")
+        if st.button("✨ Gerar Legenda Profissional"):
+            if versiculo and tema:
+                with st.spinner("IA processando..."):
+                    prompt = f"""
+                    Igreja: {config['nome_exibicao']}
+                    Base: {versiculo}
+                    Hashtags Fixas: {config['hashtags_fixas']}
+                    Regra: Bíblia ARA, +30 palavras, emojis pentecostais e hashtags temáticas.
+                    Tema: {tema}
+                    """
+                    # Aqui entra a chamada real da OpenAI (client.chat.completions.create...)
+                    st.success("Legenda gerada com sucesso! (Conecte sua lógica da OpenAI aqui)")
+                    st.code(f"Texto exemplo baseado em {versiculo}...\n\n{config['hashtags_fixas']}", language=None)
+            else:
+                st.warning("Preencha o versículo e o tema.")
