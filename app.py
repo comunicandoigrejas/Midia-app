@@ -11,7 +11,11 @@ st.set_page_config(page_title="Comunicando Igrejas - Painel", layout="wide")
 st.markdown("<style>header {visibility: hidden;} #MainMenu {visibility: hidden;} footer {visibility: hidden;}</style>", unsafe_allow_html=True)
 
 # 2. Conexão
-conn = st.connection("gsheets", type=GSheetsConnection)
+try:
+    conn = st.connection("gsheets", type=GSheetsConnection)
+except Exception as e:
+    st.error(f"Erro na conexão: {e}")
+    st.info("Verifique se o nome nos Secrets é [connections.gsheets]")
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 # --- FUNÇÕES DE BANCO DE DATA ---
