@@ -38,7 +38,7 @@ st.markdown("""
     /* Deslocamos ele para baixo para não ser afetado pela limpeza do topo */
     [data-testid="stSidebarCollapseButton"] {
         top: 300px !important;
-        left: 10px !important;
+        left: 100px !important;
         background-color: rgba(255,255,255,0.1);
         border-radius: 50%;
         z-index: 999999;
