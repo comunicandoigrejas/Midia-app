@@ -136,16 +136,43 @@ else:
                     st.code(texto, language=None)
                     st.link_button("📲 Enviar para WhatsApp", f"https://api.whatsapp.com/send?text={urllib.parse.quote(texto)}")
 
-    # --- ABA 2: STORIES ---
+   # --- ABA 2: ROTEIRO DE STORIES (3 TELAS ESTRATÉGICAS) ---
     with tab_story:
-        st.header("Roteiro de Stories")
-        tema_s = st.text_input("Tema da sequência")
-        if st.button("🎬 Criar Roteiro"):
-            with st.spinner("Gerando..."):
-                prompt_s = f"Crie roteiro de 4 stories para {conf['nome_exibicao']} sobre {tema_s}."
-                res_s = client.chat.completions.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": prompt_s}])
-                st.write(res_s.choices[0].message.content)
-
+        st.header("🎬 Roteiro Estratégico para Stories")
+        st.write("Crie uma sequência de 3 telas focada em engajamento e palavra.")
+        
+        tema_s = st.text_input("Qual o assunto ou tema da sequência?", placeholder="Ex: Ansiedade, Gratidão, Novo Ciclo...")
+        
+        if st.button("🎬 Gerar Roteiro de 3 Telas"):
+            if tema_s:
+                with st.spinner("Desenhando suas telas..."):
+                    # Prompt ultra-específico para garantir a regra das 3 telas
+                    prompt_s = f"""
+                    Atue como Social Media Expert Cristão. Crie uma sequência de EXATAMENTE 3 Stories para a igreja {conf['nome_exibicao']} sobre o tema: {tema_s}.
+                    
+                    ESTRUTURA OBRIGATÓRIA:
+                    - STORY 1 (PERGUNTA): Crie uma pergunta interativa e provocativa para usar com a 'Caixinha de Pergunta' ou 'Enquete'. O objetivo é gerar curiosidade.
+                    - STORY 2 (VERSÍCULO): Escolha um versículo bíblico curto e impactante sobre o tema. Use obrigatoriamente a versão Almeida Revista e Atualizada (ARA).
+                    - STORY 3 (REFLEXÃO): Uma reflexão prática e inspiradora de no máximo 3 frases, encerrando com uma chamada para ação (Ex: 'Medite nisso', 'Compartilhe com alguém').
+                    
+                    Formate a resposta de forma clara: 'STORY 1:', 'STORY 2:' e 'STORY 3:'.
+                    """
+                    
+                    res_s = client.chat.completions.create(
+                        model="gpt-3.5-turbo", 
+                        messages=[{"role": "user", "content": prompt_s}]
+                    )
+                    roteiro = res_s.choices[0].message.content
+                    
+                    # Exibição elegante
+                    st.subheader("Seu Roteiro Sugerido:")
+                    st.info(roteiro)
+                    
+                    # Opção de copiar para o WhatsApp para facilitar o envio para o pastor/líder
+                    texto_wa_s = urllib.parse.quote(roteiro)
+                    st.link_button("📲 Enviar Roteiro p/ WhatsApp", f"https://api.whatsapp.com/send?text={texto_wa_s}")
+            else:
+                st.warning("Por favor, digite um tema para os Stories.")
     # --- ABA 3: CALENDÁRIO ---
     with tab_cal:
         st.header("📅 Agendamento")
