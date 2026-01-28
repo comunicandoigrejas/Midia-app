@@ -160,15 +160,69 @@ else:
                 res_s = client.chat.completions.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": prompt_s}])
                 st.write(res_s.choices[0].message.content)
 
-    # --- ABA 3: CALENDÁRIO ---
+    # --- ABA 3: CALENDÁRIO & AGENDAMENTO ---
     with tab_cal:
-        st.header("Planejamento Semanal")
+        st.header("📅 Gestão de Cronograma")
+        
+        # 1. FORMULÁRIO PARA NOVO AGENDAMENTO
+        with st.expander("➕ Agendar Nova Postagem", expanded=False):
+            with st.form("novo_agendamento"):
+                col_d, col_r = st.columns(2)
+                with col_d:
+                    data_post = st.date_input("Data da Postagem", datetime.now())
+                with col_r:
+                    rede_post = st.selectbox("Rede Social", ["Instagram", "Facebook", "YouTube", "WhatsApp"])
+                
+                tema_post = st.text_input("Tema/Assunto do Post")
+                
+                if st.form_submit_button("Salvar no Calendário"):
+                    if tema_post:
+                        try:
+                            # Prepara os dados para salvar
+                            novo_dado = pd.DataFrame([{
+                                "igreja_id": st.session_state.igreja_id,
+                                "data": data_post.strftime('%Y-%m-%d'),
+                                "rede_social": rede_post,
+                                "tema": tema_post,
+                                "status": "Pendente"
+                            }])
+                            
+                            # Envia para o Google Sheets (Aba calendario)
+                            # Nota: O gsheets_connection usa o método 'update' ou 'create' para escrever
+                            conn.create(spreadsheet=URL_PLANILHA, worksheet="calendario", data=novo_dado)
+                            
+                            st.success("✅ Postagem agendada com sucesso!")
+                            st.balloons()
+                            st.rerun() # Atualiza a tela para mostrar o novo item
+                        except Exception as e:
+                            st.error(f"Erro ao salvar: {e}")
+                    else:
+                        st.warning("Por favor, preencha o tema do post.")
+
+        st.divider()
+
+        # 2. VISUALIZAÇÃO DO CALENDÁRIO ATUAL
+        st.subheader("Seu Cronograma")
         df_calendario = carregar_calendario()
-        cal_igreja = df_calendario[df_calendario['igreja_id'] == st.session_state.igreja_id]
+        
+        # Filtra apenas para a igreja logada
+        cal_igreja = df_calendario[df_calendario['igreja_id'].astype(str).str.lower() == st.session_state.igreja_id.lower()]
+        
         if not cal_igreja.empty:
-            st.dataframe(cal_igreja[['data', 'rede_social', 'tema', 'status']], use_container_width=True)
+            # Organiza por data mais próxima
+            cal_igreja = cal_igreja.sort_values(by='data', ascending=True)
+            
+            # Exibe a tabela formatada
+            st.dataframe(
+                cal_igreja[['data', 'rede_social', 'tema', 'status']], 
+                use_container_width=True,
+                hide_index=True
+            )
+            
+            # Botão de ajuda para o usuário
+            st.caption("ℹ️ Para editar ou excluir postagens, entre em contato com o administrador.")
         else:
-            st.info("Nenhum agendamento encontrado para esta igreja.")
+            st.info("Você ainda não tem postagens agendadas. Use o botão acima para começar!")
 
     # --- ABA 4: PERSONALIZAÇÃO (A PALETA DE 20 CORES) ---
     with tab_cor:
