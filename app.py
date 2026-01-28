@@ -4,6 +4,22 @@ from openai import OpenAI
 import urllib.parse
 import pandas as pd
 
+# --- BLOCO DE DIAGNÓSTICO TEMPORÁRIO ---
+st.write("### 🔍 Diagnóstico de Conexão")
+if "connections" in st.secrets:
+    st.write("✅ Gaveta 'connections' encontrada!")
+    if "gsheets" in st.secrets["connections"]:
+        st.write("✅ Pasta 'gsheets' encontrada!")
+        if "spreadsheet" in st.secrets["connections"]["gsheets"]:
+            st.write("✅ Link 'spreadsheet' encontrado!")
+        else:
+            st.error("❌ Link 'spreadsheet' NÃO encontrado dentro de gsheets.")
+    else:
+        st.error("❌ Pasta 'gsheets' NÃO encontrada dentro de connections.")
+else:
+    st.error("❌ Gaveta 'connections' NÃO encontrada nos Secrets.")
+# ---------------------------------------
+
 # 1. Configurações Iniciais
 st.set_page_config(page_title="Comunicando Igrejas - Painel", layout="wide")
 
