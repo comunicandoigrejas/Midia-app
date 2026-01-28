@@ -20,34 +20,39 @@ if "cor_previa" not in st.session_state: st.session_state.cor_previa = None
 for chave in ["perfil", "igreja_id", "email"]:
     if chave not in st.session_state: st.session_state[chave] = ""
 
-# --- 🛠️ CSS CIRÚRGICO: REMOVE APENAS O FORK E GITHUB (LADO DIREITO) ---
+# --- 🛠️ CSS AVANÇADO: MOVE O BOTÃO DE RECOLHER E SOME COM OS ÍCONES ---
 st.markdown("""
     <style>
-    /* Esconde especificamente o grupo de botões Fork/GitHub no topo direito */
+    /* 1. Esconde os ícones de desenvolvedor (Fork, GitHub, View Source) */
     [data-testid="stHeaderActionElements"] {
         display: none !important;
     }
 
-    /* Esconde o botão de Deploy e o menu de 3 pontos */
-    .stAppDeployButton, #MainMenu {
+    /* 2. Esconde o menu de 3 pontos e o botão de Deploy */
+    #MainMenu, .stAppDeployButton {
+        visibility: hidden !important;
         display: none !important;
     }
 
-    /* Garante que o cabeçalho seja transparente para manter o botão da sidebar visível */
+    /* 3. LOCALIZA E MOVE O BOTÃO DE RECOLHER (O símbolo '>') */
+    /* Deslocamos ele para baixo para não ser afetado pela limpeza do topo */
+    [data-testid="stSidebarCollapseButton"] {
+        top: 45px !important;
+        left: 10px !important;
+        background-color: rgba(255,255,255,0.1);
+        border-radius: 50%;
+        z-index: 999999;
+    }
+
+    /* 4. Torna o cabeçalho invisível para remover a barra cinza */
     header[data-testid="stHeader"] {
         background-color: rgba(0,0,0,0) !important;
-        color: inherit !important;
+        border: none !important;
     }
 
-    /* Remove o rodapé 'Made with Streamlit' */
-    footer {
-        visibility: hidden !important;
-    }
-
-    /* Ajuste de margem para o conteúdo começar de forma elegante */
-    .block-container {
-        padding-top: 2rem !important;
-    }
+    /* 5. Remove o rodapé e ajusta o conteúdo */
+    footer { visibility: hidden !important; }
+    .block-container { padding-top: 3rem !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -75,7 +80,7 @@ def chamar_super_agente(comando):
     thread = client.beta.threads.create()
     client.beta.threads.messages.create(thread_id=thread.id, role="user", content=comando)
     run = client.beta.threads.runs.create(thread_id=thread.id, assistant_id=ASSISTANT_ID)
-    with st.spinner("🧠 O Super Agente está processando sua estratégia..."):
+    with st.spinner("🧠 Super Agente processando..."):
         while run.status != "completed":
             time.sleep(1)
             run = client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
@@ -129,14 +134,9 @@ else:
         st.link_button("📸 Instagram", str(conf['instagram_url']), use_container_width=True)
 
     # ABAS
-    lista_abas = ["✨ Legendas", "🎬 Stories", "⚙️ Perfil"]
-    if st.session_state.perfil == "admin": lista_abas.insert(0, "📊 Master")
-    obj_abas = st.tabs(lista_abas)
+    t_gen, t_story, t_perf = st.tabs(["✨ Legendas", "🎬 Stories", "⚙️ Perfil"])
 
-    if st.session_state.perfil == "admin": t_master, t_gen, t_story, t_perf = obj_abas
-    else: t_gen, t_story, t_perf = obj_abas
-
-    # --- ABA 1: LEGENDAS (RESTAURADA E COMPLETA) ---
+    # --- ABA 1: LEGENDAS ---
     with t_gen:
         st.header("✨ Gerador de Conteúdo ARA")
         col1, col2 = st.columns(2)
