@@ -95,7 +95,7 @@ else:
            [data-testid="stSidebar"] button[kind="header"] {{
             position: fixed !important;
             top: 50% !important;
-            /* Ele fica na borda direita da sidebar aberta */
+            /* Ele fica na borda direita da sidebar fechada */
             left: 335px !important; 
             transform: translateY(-50%) !important;
             z-index: 1000001 !important;
