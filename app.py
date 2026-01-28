@@ -6,7 +6,7 @@ import pandas as pd
 import time
 from datetime import datetime
 
-# 1. CONFIGURAÇÃO DE PÁGINA (Sempre a primeira linha)
+# 1. CONFIGURAÇÃO DE PÁGINA
 st.set_page_config(
     page_title="Comunicando Igrejas Pro", 
     page_icon="⚡", 
@@ -14,13 +14,13 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 2. INICIALIZAÇÃO DE SEGURANÇA (Prevenção de AttributeError)
+# 2. INICIALIZAÇÃO DE ESTADO (Prevenção de erros de atributo)
 if "logado" not in st.session_state: st.session_state.logado = False
 if "perfil" not in st.session_state: st.session_state.perfil = ""
 if "igreja_id" not in st.session_state: st.session_state.igreja_id = ""
 if "email" not in st.session_state: st.session_state.email = ""
 
-# --- CSS PARA VISUAL LIMPO (Sem Fork/GitHub) ---
+# --- CSS: LIMPEZA DO HEADER (Mantendo o botão lateral) ---
 st.markdown("""
     <style>
     [data-testid="stHeaderActionElements"] { display: none !important; }
@@ -31,15 +31,15 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 3. CONEXÕES (Com Verificação de Link)
+# 3. CONEXÕES
 try:
     conn = st.connection("gsheets", type=GSheetsConnection)
     client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
     ASSISTANT_ID = st.secrets["OPENAI_ASSISTANT_ID"]
-    # Pegamos o link diretamente para evitar o erro de 'Spreadsheet must be specified'
+    # URL da planilha vinda diretamente dos Secrets
     URL_PLANILHA = st.secrets["connections"]["gsheets"]["spreadsheet"]
 except Exception as e:
-    st.error(f"Erro de Configuração: {e}")
+    st.error(f"Erro ao carregar configurações: {e}")
     st.stop()
 
 # --- FUNÇÕES SUPORTE ---
@@ -84,16 +84,16 @@ if not st.session_state.logado:
                 u = df_u[(df_u['email'].str.lower() == em.lower()) & (df_u['senha'].astype(str) == str(se))]
                 
                 if not u.empty:
-                    # --- TRAVA DE SEGURANÇA: BLOQUEIO DE CONTA ---
-                    status_raw = str(u.iloc[0]['status']).strip().lower()
-                    if status_raw == 'ativo':
+                    # --- LÓGICA DE BLOQUEIO RIGOROSA ---
+                    status_user = str(u.iloc[0]['status']).strip().lower()
+                    if status_user == 'ativo':
                         st.session_state.logado = True
                         st.session_state.perfil = str(u.iloc[0]['perfil']).strip().lower()
                         st.session_state.igreja_id = u.iloc[0]['igreja_id']
                         st.session_state.email = em
                         st.rerun()
                     else:
-                        st.error("🚫 Conta Bloqueada ou Inativa. Procure o administrador.")
+                        st.error("🚫 ACESSO NEGADO: Sua conta está inativa ou bloqueada.")
                 else:
                     st.error("❌ E-mail ou senha incorretos.")
     with t2:
@@ -104,6 +104,8 @@ if not st.session_state.logado:
 # ==========================================
 else:
     df_conf = carregar_configuracoes()
+    
+    # Lógica Admin vs Usuário
     if st.session_state.perfil == "admin":
         st.sidebar.subheader("👑 Modo Administrador")
         igreja_nome = st.sidebar.selectbox("Simular Igreja:", df_conf['nome_exibicao'].tolist())
@@ -112,51 +114,57 @@ else:
         conf = df_conf[df_conf['igreja_id'] == st.session_state.igreja_id].iloc[0]
         st.sidebar.subheader(f"⛪ {conf['nome_exibicao']}")
 
-    # BARRA LATERAL
     with st.sidebar:
-        if st.button("🚪 SAIR", use_container_width=True, type="primary"): logout()
+        if st.button("🚪 SAIR DO SISTEMA", use_container_width=True, type="primary"):
+            logout()
         st.divider()
         st.link_button("📸 Instagram", conf['instagram_url'], use_container_width=True)
 
-    # ABAS
-    abas = st.tabs(["✨ Legendas", "🎬 Stories", "📅 Calendário", "⚙️ Perfil"])
-    t_gen, t_story, t_cal, t_perf = abas
+    # ABAS PRINCIPAIS
+    list_tabs = ["✨ Legendas", "🎬 Stories", "📅 Calendário", "⚙️ Perfil"]
+    if st.session_state.perfil == "admin": list_tabs.insert(0, "📊 Master")
+    abas = st.tabs(list_tabs)
 
-    # --- ABA 1: GERADOR ---
+    if st.session_state.perfil == "admin": t_master, t_gen, t_story, t_cal, t_perf = abas
+    else: t_gen, t_story, t_cal, t_perf = abas
+
+    # Conteúdo da Aba Master
+    if st.session_state.perfil == "admin":
+        with t_master:
+            st.header("📊 Gestão Master")
+            st.dataframe(df_conf, use_container_width=True)
+
+    # Conteúdo da Aba Gerador
     with t_gen:
-        st.header("✨ Gerador com Super Agente")
+        st.header("✨ Super Agente: Legendas")
         br = st.text_area("Tema da postagem")
         if st.button("🚀 Criar Conteúdo"):
             if br:
-                res = chamar_super_agente(f"Legenda para Instagram, tema {br}. Use: {conf['hashtags_fixas']}")
-                st.info(res)
-                st.link_button("📲 WhatsApp", f"https://api.whatsapp.com/send?text={urllib.parse.quote(res)}")
+                resultado = chamar_super_agente(f"Legenda para Instagram, tema {br}. Use hashtags: {conf['hashtags_fixas']}")
+                st.info(resultado)
+                st.link_button("📲 Enviar WhatsApp", f"https://api.whatsapp.com/send?text={urllib.parse.quote(resultado)}")
 
-    # --- ABA 2: STORIES ---
-    with t_story:
-        st.header("🎬 Roteiro de Stories")
-        ts = st.text_input("Tema dos Stories")
-        if st.button("🎬 Gerar Sequência"):
-            res_s = chamar_super_agente(f"Crie 3 stories sobre {ts} para {conf['nome_exibicao']}.")
-            st.success(res_s)
-
-    # --- ABA 3: CALENDÁRIO (FIXO PARA EVITAR VALUEERROR) ---
+    # Conteúdo da Aba Calendário (Onde ocorria o erro)
     with t_cal:
         st.header("📅 Agendamento")
         with st.expander("➕ Novo Agendamento"):
-            with st.form("f_cal"):
+            with st.form("form_agendar"):
                 dp = st.date_input("Data")
-                tp = st.text_input("Tema")
+                tp = st.text_input("Assunto")
                 if st.form_submit_button("Salvar"):
-                    if URL_PLANILHA: # Verifica se o link existe antes de salvar
+                    # Forçamos a URL aqui para garantir que não seja vazia
+                    if URL_PLANILHA:
                         nv = pd.DataFrame([{"igreja_id": conf['igreja_id'], "data": dp.strftime('%Y-%m-%d'), "rede_social": "Geral", "tema": tp, "status": "Pendente"}])
                         conn.create(spreadsheet=URL_PLANILHA, worksheet="calendario", data=nv)
-                        st.success("Salvo!")
+                        st.success("Salvo com sucesso!")
                         st.rerun()
                     else:
-                        st.error("Erro: Link da planilha não configurado.")
+                        st.error("Erro: Link da planilha não encontrado.")
+        
+        df_c = carregar_calendario()
+        st.dataframe(df_c[df_c['igreja_id'] == conf['igreja_id']], use_container_width=True, hide_index=True)
 
-    # --- ABA 4: PERFIL ---
+    # Conteúdo da Aba Perfil
     with t_perf:
-        st.header("⚙️ Minha Conta")
-        st.write(f"Conectado como: **{st.session_state.email}**")
+        st.header("⚙️ Configurações")
+        st.write(f"Usuário: **{st.session_state.email}**")
