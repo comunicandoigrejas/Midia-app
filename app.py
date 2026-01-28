@@ -6,7 +6,7 @@ import pandas as pd
 import time
 from datetime import datetime
 
-# 1. CONFIGURAÇÃO DE PÁGINA (Sempre o primeiro comando)
+# 1. CONFIGURAÇÃO DE PÁGINA (Deve ser o primeiro comando)
 st.set_page_config(
     page_title="Comunicando Igrejas Pro", 
     page_icon="⚡", 
@@ -19,7 +19,7 @@ for chave in ["logado", "perfil", "igreja_id", "email"]:
     if chave not in st.session_state:
         st.session_state[chave] = False if chave == "logado" else ""
 
-# --- CSS: VISUAL LIMPO E PROFISSIONAL ---
+# --- CSS: VISUAL LIMPO ---
 st.markdown("""
     <style>
     [data-testid="stHeaderActionElements"] { display: none !important; }
@@ -30,43 +30,35 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 3. CONEXÕES (Capturando a URL logo no início)
+# 3. CONEXÕES (Ajuste Crítico aqui)
 try:
-    # Capturamos a URL aqui para garantir que ela exista em todo o código
-    URL_PLANILHA = st.secrets["connections"]["gsheets"]["spreadsheet"]
-    conn = st.connection("gsheets", type=GSheetsConnection)
+    # Capturamos a URL diretamente para vincular à conexão
+    LINK_PLANILHA = st.secrets["connections"]["gsheets"]["spreadsheet"]
+    
+    # Criamos a conexão já 'anexando' a planilha a ela
+    conn = st.connection("gsheets", type=GSheetsConnection, spreadsheet=LINK_PLANILHA)
+    
     client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
     ASSISTANT_ID = st.secrets["OPENAI_ASSISTANT_ID"]
 except Exception as e:
-    st.error(f"⚠️ Erro Crítico nos Secrets: {e}")
+    st.error(f"⚠️ Erro nos Secrets ou Conexão: {e}")
     st.stop()
 
 # --- FUNÇÕES DE APOIO ---
 def carregar_usuarios(): 
-    return conn.read(spreadsheet=URL_PLANILHA, worksheet="usuarios", ttl=0)
+    return conn.read(worksheet="usuarios", ttl=0)
 
 def carregar_configuracoes(): 
-    return conn.read(spreadsheet=URL_PLANILHA, worksheet="configuracoes", ttl=0)
+    return conn.read(worksheet="configuracoes", ttl=0)
 
 def carregar_calendario():
     try: 
-        return conn.read(spreadsheet=URL_PLANILHA, worksheet="calendario", ttl=0)
+        return conn.read(worksheet="calendario", ttl=0)
     except: 
         return pd.DataFrame(columns=['igreja_id', 'data', 'rede_social', 'tema', 'status'])
 
-def chamar_super_agente(comando):
-    thread = client.beta.threads.create()
-    client.beta.threads.messages.create(thread_id=thread.id, role="user", content=comando)
-    run = client.beta.threads.runs.create(thread_id=thread.id, assistant_id=ASSISTANT_ID)
-    with st.spinner("🧠 Super Agente analisando..."):
-        while run.status != "completed":
-            time.sleep(1)
-            run = client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
-    mensagens = client.beta.threads.messages.list(thread_id=thread.id)
-    return mensagens.data[0].content[0].text.value
-
 # ==========================================
-# INTERFACE DE LOGIN (BLOQUEIO REFORÇADO)
+# INTERFACE DE LOGIN (TRAVA DE BLOQUEIO ATIVA)
 # ==========================================
 if not st.session_state.logado:
     st.title("🚀 Comunicando Igrejas")
@@ -78,23 +70,21 @@ if not st.session_state.logado:
             se = st.text_input("Senha", type="password")
             if st.form_submit_button("Acessar Sistema"):
                 df_u = carregar_usuarios()
-                # Validação de e-mail e senha
                 u = df_u[(df_u['email'].str.lower() == em.lower()) & (df_u['senha'].astype(str) == str(se))]
                 
                 if not u.empty:
-                    # --- TRAVA DE BLOQUEIO (TRATANDO VALORES VAZIOS) ---
+                    # LÓGICA DE BLOQUEIO: Se for nulo ou diferente de 'ativo', bloqueia.
                     status_raw = u.iloc[0]['status']
-                    # Se for nulo ou NaN, vira 'inativo' por segurança
                     status_db = str(status_raw).strip().lower() if pd.notnull(status_raw) else "inativo"
                     
-                    if status_db == 'ativo':
+                    if status_db == "ativo":
                         st.session_state.logado = True
                         st.session_state.perfil = str(u.iloc[0]['perfil']).strip().lower()
                         st.session_state.igreja_id = u.iloc[0]['igreja_id']
                         st.session_state.email = em
                         st.rerun()
                     else:
-                        st.error(f"🚫 ACESSO BLOQUEADO: Sua conta está com status '{status_db}'. Procure o suporte.")
+                        st.error(f"🚫 ACESSO NEGADO: Sua conta está '{status_db}'. Procure o suporte.")
                 else:
                     st.error("❌ E-mail ou senha incorretos.")
     with t2:
@@ -106,7 +96,7 @@ if not st.session_state.logado:
 else:
     df_conf = carregar_configuracoes()
     
-    # Lógica Admin Master vs Usuário
+    # Identificação de Perfil
     if st.session_state.perfil == "admin":
         st.sidebar.subheader("👑 Modo Administrador")
         igreja_nome = st.sidebar.selectbox("Escolher Igreja:", df_conf['nome_exibicao'].tolist())
@@ -119,51 +109,41 @@ else:
         if st.button("🚪 LOGOUT", use_container_width=True, type="primary"):
             st.session_state.clear()
             st.rerun()
-        st.divider()
-        st.link_button("📸 Instagram", str(conf['instagram_url']), use_container_width=True)
 
     abas = st.tabs(["✨ Legendas", "🎬 Stories", "📅 Calendário", "⚙️ Perfil"])
     t_gen, t_story, t_cal, t_perf = abas
-
-    # --- ABA 1: GERADOR ---
-    with t_gen:
-        st.header("✨ Super Agente: Conteúdo")
-        br = st.text_area("O que vamos criar?")
-        if st.button("🚀 Gerar agora"):
-            if br:
-                res = chamar_super_agente(f"Legenda para Instagram, tema {br}. Hashtags: {conf['hashtags_fixas']}")
-                st.info(res)
 
     # --- ABA 3: CALENDÁRIO (RESOLVENDO O VALUEERROR) ---
     with t_cal:
         st.header("📅 Agendamento")
         with st.expander("➕ Novo Post"):
-            with st.form("form_agendar"):
+            with st.form("form_agendar_definitivo"):
                 dp = st.date_input("Data", datetime.now())
-                tp = st.text_input("Tema")
+                tp = st.text_input("Assunto")
                 if st.form_submit_button("Confirmar Agendamento"):
-                    if URL_PLANILHA:
-                        dados_novos = pd.DataFrame([{
-                            "igreja_id": conf['igreja_id'], 
-                            "data": dp.strftime('%Y-%m-%d'), 
-                            "rede_social": "Geral", 
-                            "tema": tp, 
-                            "status": "Pendente"
-                        }])
-                        # Usando a variável global URL_PLANILHA que validamos no início
-                        conn.create(spreadsheet=URL_PLANILHA, worksheet="calendario", data=dados_novos)
-                        st.success("✅ Salvo com sucesso!")
+                    # Criamos o DataFrame de dados novos
+                    dados_novos = pd.DataFrame([{
+                        "igreja_id": conf['igreja_id'], 
+                        "data": dp.strftime('%Y-%m-%d'), 
+                        "rede_social": "Geral", 
+                        "tema": tp, 
+                        "status": "Pendente"
+                    }])
+                    
+                    # O PULO DO GATO: Usar a conexão vinculada ao segredo diretamente
+                    try:
+                        conn.create(
+                            spreadsheet=st.secrets["connections"]["gsheets"]["spreadsheet"], 
+                            worksheet="calendario", 
+                            data=dados_novos
+                        )
+                        st.success("✅ Agendado com sucesso!")
                         time.sleep(1)
                         st.rerun()
-                    else:
-                        st.error("Erro: Link da planilha não encontrado.")
+                    except Exception as error_save:
+                        st.error(f"Erro ao salvar: {error_save}")
         
+        # Exibição do Calendário
         df_c = carregar_calendario()
-        # Filtra apenas o calendário da igreja selecionada
         df_filtrado = df_c[df_c['igreja_id'].astype(str) == str(conf['igreja_id'])]
         st.dataframe(df_filtrado, use_container_width=True, hide_index=True)
-
-    with t_perf:
-        st.header("⚙️ Minha Conta")
-        st.write(f"Conectado como: **{st.session_state.email}**")
-        st.write(f"Perfil: **{st.session_state.perfil.capitalize()}**")
