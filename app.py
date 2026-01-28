@@ -20,7 +20,7 @@ for chave in ["perfil", "igreja_id", "email"]:
     if chave not in st.session_state: st.session_state[chave] = ""
 
 # --- CSS ULTRA-REFORÇADO: BLOQUEIO TOTAL DE LINKS EXTERNOS NO HEADER ---
-st.markdown("""
+st.markdown(""")
     <style>
     /* 1. Remove toda a área de botões do topo (GitHub, Fork, etc) */
     [data-testid="stHeaderActionElements"] {
