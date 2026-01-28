@@ -107,40 +107,28 @@ if not st.session_state.logado:
 # AMBIENTE LOGADO
 # ==========================================
 else:
-    # 4 espaços de recuo para entrar no 'else'
     df_conf = carregar_configuracoes()
     
+    # Define se é Admin Master ou Usuário para carregar a igreja correta
+    if st.session_state.perfil == "admin":
+        st.sidebar.subheader("👑 Modo Administrador")
+        igreja_nome = st.sidebar.selectbox("Escolher Igreja:", df_conf['nome_exibicao'].tolist())
+        conf = df_conf[df_conf['nome_exibicao'] == igreja_nome].iloc[0]
+    else:
+        conf = df_conf[df_conf['igreja_id'] == st.session_state.igreja_id].iloc[0]
+
+    # --- BARRA LATERAL (SIDEBAR) ---
     with st.sidebar:
-        # 8 espaços de recuo para entrar no 'with'
         st.subheader(f"⛪ {conf['nome_exibicao']}")
         
-        # Esta linha deve estar EXATAMENTE abaixo da de cima
-        if st.button("🚪 LOGOUT", use_container_width=True, type="primary"):
-            # 12 espaços de recuo para entrar no 'if'
-            st.session_state.clear()
-            st.rerun()
-            
-        st.divider() # Volta para 8 espaços
-        st.link_button("📸 Instagram", conf['instagram_url'], use_container_width=True)
-    
-    # O restante das abas também segue este alinhamento
-    abas = st.tabs(["✨ Legendas", "🎬 Stories", "⚙️ Perfil"])
-    # ...
-        
-        # Botão de Logout
+        # Este botão deve estar alinhado com o subheader acima
         if st.button("🚪 LOGOUT", use_container_width=True, type="primary"):
             st.session_state.clear()
             st.rerun()
             
         st.divider()
-        
-        # Link para o Instagram da Igreja
-        st.link_button("📸 Instagram da Igreja", conf['instagram_url'], use_container_width=True)
-        
-        st.caption(f"Usuário: {st.session_state.email}")
-
-    abas = st.tabs(["✨ Legendas", "🎬 Stories", "⚙️ Perfil"])
-    t_gen, t_story, t_perf = abas
+        st.link_button("📸 Instagram", str(conf['instagram_url']), use_container_width=True)
+        st.caption(f"Logado como: {st.session_state.email}")
 
   # --- ABA 1: GERADOR DE LEGENDAS ---
     with t_gen:
