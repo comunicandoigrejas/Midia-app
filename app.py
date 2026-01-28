@@ -91,14 +91,12 @@ else:
         }}
 
         /* 2. BOTÃO QUANDO A SIDEBAR ESTÁ FECHADA (ABRIR) */
-        /* Localiza o botão dentro do cabeçalho da própria sidebar */
-           [data-testid="stSidebar"] button[kind="header"] {{
+        [data-testid="stSidebarCollapseButton"] {{
             position: fixed !important;
             top: 50% !important;
-            /* Ele fica na borda direita da sidebar fechada */
-            left: 335px !important; 
+            left: 0px !important;
             transform: translateY(-50%) !important;
-            z-index: 1000001 !important;
+            z-index: 1000000 !important;
             background-color: {cor_atual} !important;
             color: white !important;
             border-radius: 0 12px 12px 0 !important;
@@ -108,6 +106,7 @@ else:
             align-items: center !important;
             justify-content: center !important;
             box-shadow: 4px 0px 10px rgba(0,0,0,0.2) !important;
+            border: 1px solid rgba(255,255,255,0.2) !important;
         }}
 
         /* 3. BOTÃO QUANDO A SIDEBAR ESTÁ ABERTA (FECHAR) */
@@ -182,24 +181,10 @@ else:
                 res_s = chamar_super_agente(f"Crie 3 stories sobre {ts} para {conf['nome_exibicao']}.")
                 st.success(res_s)
 
-  # --- ABA 3: PERFIL ---
+    # --- ABA 3: PERFIL ---
     with t_perf:
         st.header("⚙️ Personalização")
         nova_cor = st.color_picker("Cor da igreja:", cor_atual)
         if st.button("🖌️ Aplicar Cor"):
             st.session_state.cor_previa = nova_cor
             st.rerun()
-        
-        st.divider()
-        with st.form("form_senha"):
-            st.subheader("🔑 Alterar Senha")
-            s_at = st.text_input("Senha Atual", type="password")
-            s_nv = st.text_input("Nova Senha", type="password")
-            if st.form_submit_button("Atualizar"):
-                df_u = carregar_usuarios()
-                idx = df_u.index[df_u['email'].str.lower() == st.session_state.email.lower()].tolist()
-                if idx and str(df_u.at[idx[0], 'senha']) == s_at:
-                    df_u.at[idx[0], 'senha'] = s_nv
-                    conn.update(spreadsheet=URL_PLANILHA, worksheet="usuarios", data=df_u)
-                    st.success("✅ Senha alterada!")
-                else: st.error("❌ Erro na senha.")
