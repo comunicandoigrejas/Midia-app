@@ -4,14 +4,13 @@ from openai import OpenAI
 import urllib.parse
 import pandas as pd
 import time
-from datetime import datetime
 
 # 1. CONFIGURAÇÃO DE PÁGINA
 st.set_page_config(
     page_title="Comunicando Igrejas Pro", 
     page_icon="⚡", 
     layout="wide",
-    initial_sidebar_state="auto"
+    initial_sidebar_state="collapsed" # Inicia sem sidebar
 )
 
 # 2. INICIALIZAÇÃO DE ESTADO
@@ -19,6 +18,41 @@ if "logado" not in st.session_state: st.session_state.logado = False
 if "cor_previa" not in st.session_state: st.session_state.cor_previa = None
 for chave in ["perfil", "igreja_id", "email"]:
     if chave not in st.session_state: st.session_state[chave] = ""
+
+# --- 🛠️ CSS ULTRA-CLEAN: REMOVE TUDO (SIDEBAR, HEADER E GITHUB) ---
+st.markdown("""
+    <style>
+    /* 1. Esconde o Header inteiro (Fork, GitHub, Menu somem aqui) */
+    header[data-testid="stHeader"] {
+        display: none !important;
+    }
+
+    /* 2. Esconde a barra lateral e o botão de controle nativo */
+    [data-testid="stSidebar"], [data-testid="collapsedControl"] {
+        display: none !important;
+    }
+
+    /* 3. Remove o rodapé */
+    footer {
+        visibility: hidden !important;
+    }
+
+    /* 4. Ajusta o conteúdo para começar do topo e centraliza o título */
+    .block-container {
+        padding-top: 2rem !important;
+        max-width: 80% !important;
+        margin: auto;
+    }
+
+    .church-title {
+        text-align: center;
+        font-size: 2.5rem;
+        font-weight: 800;
+        margin-bottom: 2rem;
+        font-family: 'Inter', sans-serif;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 # 3. CONEXÕES
 try:
@@ -49,156 +83,120 @@ def chamar_super_agente(comando):
 # INTERFACE DE LOGIN
 # ==========================================
 if not st.session_state.logado:
-    st.title("🚀 Comunicando Igrejas")
-    with st.form("login"):
-        em = st.text_input("E-mail")
-        se = st.text_input("Senha", type="password")
-        if st.form_submit_button("Acessar Painel"):
-            df_u = carregar_usuarios()
-            u = df_u[(df_u['email'].str.lower() == em.lower()) & (df_u['senha'].astype(str) == str(se))]
-            if not u.empty:
-                status_raw = u.iloc[0]['status']
-                status_db = str(status_raw).strip().lower() if pd.notnull(status_raw) else "inativo"
-                if status_db == 'ativo':
-                    st.session_state.logado = True
-                    st.session_state.perfil = str(u.iloc[0]['perfil']).strip().lower()
-                    st.session_state.igreja_id = u.iloc[0]['igreja_id']
-                    st.session_state.email = em
-                    st.rerun()
-                else: st.error("🚫 Conta inativa.")
-            else: st.error("❌ E-mail ou senha incorretos.")
+    st.markdown("<h1 style='text-align: center;'>🚀 Comunicando Igrejas</h1>", unsafe_allow_html=True)
+    with st.container():
+        c1, c2, c3 = st.columns([1, 2, 1])
+        with c2:
+            with st.form("login"):
+                em = st.text_input("E-mail")
+                se = st.text_input("Senha", type="password")
+                if st.form_submit_button("Acessar Sistema", use_container_width=True):
+                    df_u = carregar_usuarios()
+                    u = df_u[(df_u['email'].str.lower() == em.lower()) & (df_u['senha'].astype(str) == str(se))]
+                    if not u.empty:
+                        if str(u.iloc[0]['status']).strip().lower() == 'ativo':
+                            st.session_state.logado = True
+                            st.session_state.perfil = str(u.iloc[0]['perfil']).strip().lower()
+                            st.session_state.igreja_id = u.iloc[0]['igreja_id']
+                            st.session_state.email = em
+                            st.rerun()
+                        else: st.error("🚫 Conta inativa.")
+                    else: st.error("❌ Dados incorretos.")
 
 # ==========================================
-# AMBIENTE LOGADO
+# AMBIENTE LOGADO (SEM BARRA LATERAL)
 # ==========================================
 else:
     df_conf = carregar_configuracoes()
+    # No modo sem sidebar, o Admin seleciona a igreja no topo se necessário
     if st.session_state.perfil == "admin":
-        igreja_nome = st.sidebar.selectbox("Simular Igreja:", df_conf['nome_exibicao'].tolist())
-        conf = df_conf[df_conf['nome_exibicao'] == igreja_nome].iloc[0]
+        conf_list = df_conf['nome_exibicao'].tolist()
+        escolha = st.selectbox("💎 Gestor Master: Selecione a Igreja", conf_list)
+        conf = df_conf[df_conf['nome_exibicao'] == escolha].iloc[0]
     else:
         conf = df_conf[df_conf['igreja_id'] == st.session_state.igreja_id].iloc[0]
 
+    # Cor e Tema
     cor_atual = st.session_state.cor_previa if st.session_state.cor_previa else str(conf['cor_tema'])
     if not cor_atual.startswith("#"): cor_atual = f"#{cor_atual}"
-
-    # --- 🛠️ CSS AVANÇADO: BOTÃO FLUTUANTE DUPLO (ABRIR E FECHAR) ---
+    
     st.markdown(f"""
         <style>
-        /* 1. Esconde ícones de desenvolvedor */
-        [data-testid="stHeaderActionElements"], .stAppDeployButton, #MainMenu {{
-            display: none !important;
-        }}
-
-        /* 2. BOTÃO QUANDO A SIDEBAR ESTÁ FECHADA (ABRIR) */
-        [data-testid="stSidebarCollapseButton"] {{
-            position: fixed !important;
-            top: 50% !important;
-            left: 0px !important;
-            transform: translateY(-50%) !important;
-            z-index: 1000000 !important;
-            background-color: {cor_atual} !important;
-            color: white !important;
-            border-radius: 0 12px 12px 0 !important;
-            width: 40px !important;
-            height: 60px !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            box-shadow: 4px 0px 10px rgba(0,0,0,0.2) !important;
-            border: 1px solid rgba(255,255,255,0.2) !important;
-        }}
-
-        /* 3. BOTÃO QUANDO A SIDEBAR ESTÁ ABERTA (FECHAR) */
-        /* Localiza o botão dentro do cabeçalho da própria sidebar */
-        [data-testid="stSidebar"] button[kind="header"] {{
-            position: fixed !important;
-            top: 50% !important;
-            /* Ele fica na borda direita da sidebar aberta */
-            left: 335px !important; 
-            transform: translateY(-50%) !important;
-            z-index: 1000001 !important;
-            background-color: {cor_atual} !important;
-            color: white !important;
-            border-radius: 0 12px 12px 0 !important;
-            width: 40px !important;
-            height: 60px !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            box-shadow: 4px 0px 10px rgba(0,0,0,0.2) !important;
-        }}
-        
-        /* Ajuste para telas menores (mobile) se necessário */
-        @media (max-width: 768px) {{
-            [data-testid="stSidebar"] button[kind="header"] {{ left: 255px !important; }}
-        }}
-
-        /* 4. Estilo Geral */
-        header[data-testid="stHeader"] {{ background-color: rgba(0,0,0,0) !important; }}
-        .stButton>button {{ background-color: {cor_atual}; color: white; border-radius: 8px; font-weight: bold; }}
-        .stTabs [aria-selected="true"] {{ background-color: {cor_atual}; color: white !important; border-radius: 5px; }}
-        footer {{ visibility: hidden !important; }}
+        .stButton>button {{ background-color: {cor_atual} !important; color: white !important; font-weight: bold; }}
+        .stTabs [aria-selected="true"] {{ background-color: {cor_atual} !important; color: white !important; }}
+        .church-title {{ color: {cor_atual}; }}
         </style>
+        <div class="church-title">⛪ {conf['nome_exibicao']}</div>
     """, unsafe_allow_html=True)
 
-    with st.sidebar:
-        st.subheader(f"⛪ {conf['nome_exibicao']}")
-        if st.button("🚪 LOGOUT", use_container_width=True, type="primary"):
-            st.session_state.clear()
-            st.rerun()
-        st.divider()
-        st.link_button("📸 Instagram", str(conf['instagram_url']), use_container_width=True)
+    # NAVEGAÇÃO POR ABAS (Substitui a Sidebar)
+    t_gen, t_story, t_insta, t_perf, t_sair = st.tabs([
+        "✨ Legendas", 
+        "🎬 Stories", 
+        "📸 Instagram", 
+        "⚙️ Perfil", 
+        "🚪 Sair"
+    ])
 
-    # ABAS
-    t_gen, t_story, t_perf = st.tabs(["✨ Legendas", "🎬 Stories", "⚙️ Perfil"])
-
-    # --- ABA 1: LEGENDAS (ARA) ---
+    # --- ABA 1: LEGENDAS ---
     with t_gen:
         st.header("✨ Gerador de Conteúdo ARA")
-        col1, col2 = st.columns(2)
-        with col1:
+        c1, c2 = st.columns(2)
+        with c1:
             rede = st.selectbox("Rede Social", ["Instagram", "Facebook", "WhatsApp"])
             tom = st.selectbox("Tom", ["Inspirador", "Pentecostal", "Jovem", "Teológico"])
-        with col2:
+        with c2:
             ver = st.text_input("📖 Versículo Base (ARA)", placeholder="Ex: João 10:10")
-            ht_extra = st.text_input("🏷️ Hashtags Extras")
+            ht = st.text_input("🏷️ Hashtags Extras")
         
-        tema_post = st.text_area("📝 Sobre o que vamos postar?")
-        if st.button("🚀 Criar Minha Legenda"):
-            if tema_post:
-                prompt = f"Gere legenda para {rede}, tom {tom}, tema {tema_post}, versículo {ver}. Bíblia ARA. Use hashtags: {conf['hashtags_fixas']} {ht_extra}"
-                resultado = chamar_super_agente(prompt)
-                st.info(resultado)
-                st.link_button("📲 Enviar WhatsApp", f"https://api.whatsapp.com/send?text={urllib.parse.quote(resultado)}")
+        tema = st.text_area("📝 O que vamos criar hoje?")
+        if st.button("🚀 Gerar Legenda Premium"):
+            if tema:
+                res = chamar_super_agente(f"Gere legenda para {rede}, tom {tom}, tema {tema}, versículo {ver}. ARA. Hashtags: {conf['hashtags_fixas']} {ht}")
+                st.info(res)
+                st.link_button("📲 Enviar para WhatsApp", f"https://api.whatsapp.com/send?text={urllib.parse.quote(res)}")
 
     # --- ABA 2: STORIES ---
     with t_story:
-        st.header("🎬 Super Agente: Stories")
-        ts = st.text_input("Tema dos Stories")
+        st.header("🎬 Roteiro de Stories")
+        ts = st.text_input("Tema da sequência:")
         if st.button("🎬 Criar Roteiro"):
             if ts:
                 res_s = chamar_super_agente(f"Crie 3 stories sobre {ts} para {conf['nome_exibicao']}.")
                 st.success(res_s)
 
-   # --- ABA 3: PERFIL ---
+    # --- ABA 3: INSTAGRAM (Link Direto) ---
+    with t_insta:
+        st.header("📸 Link do Instagram")
+        st.write(f"Acesse o perfil oficial da **{conf['nome_exibicao']}**")
+        st.link_button("🚀 Abrir Instagram Agora", str(conf['instagram_url']), use_container_width=True)
+
+    # --- ABA 4: PERFIL ---
     with t_perf:
-        st.header("⚙️ Personalização")
-        nova_cor = st.color_picker("Cor da igreja:", cor_atual)
-        if st.button("🖌️ Aplicar Cor"):
+        st.header("⚙️ Configurações e Identidade")
+        nova_cor = st.color_picker("Personalizar cor do sistema:", cor_atual)
+        if st.button("🖌️ Salvar Nova Cor"):
             st.session_state.cor_previa = nova_cor
             st.rerun()
         
         st.divider()
-        with st.form("form_senha"):
-            st.subheader("🔑 Alterar Senha")
+        with st.form("senha_form"):
+            st.subheader("🔒 Alterar Senha")
             s_at = st.text_input("Senha Atual", type="password")
             s_nv = st.text_input("Nova Senha", type="password")
-            if st.form_submit_button("Atualizar"):
+            if st.form_submit_button("Atualizar Credenciais"):
                 df_u = carregar_usuarios()
                 idx = df_u.index[df_u['email'].str.lower() == st.session_state.email.lower()].tolist()
                 if idx and str(df_u.at[idx[0], 'senha']) == s_at:
                     df_u.at[idx[0], 'senha'] = s_nv
                     conn.update(spreadsheet=URL_PLANILHA, worksheet="usuarios", data=df_u)
-                    st.success("✅ Senha alterada!")
-                else: st.error("❌ Erro na senha.")
+                    st.success("✅ Senha atualizada!")
+                else: st.error("❌ Senha atual incorreta.")
+
+    # --- ABA 5: SAIR ---
+    with t_sair:
+        st.header("🚪 Encerrar Sessão")
+        st.warning("Deseja realmente sair do sistema?")
+        if st.button("🔴 Confirmar Logout e Sair"):
+            st.session_state.clear()
+            st.rerun()
