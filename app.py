@@ -119,13 +119,20 @@ else:
     if not cor_atual.startswith("#"): cor_atual = f"#{cor_atual}"
     aplicar_tema(cor_atual)
 
-    with st.sidebar:
-        st.subheader(f"⛪ {conf['nome_exibicao']}")
+   with st.sidebar:
+        st.subheader(f"⛪ {conf['nome_exibicao']}") # Nome da igreja selecionada
+        
+        # Botão de Logout
         if st.button("🚪 LOGOUT", use_container_width=True, type="primary"):
             st.session_state.clear()
             st.rerun()
+            
         st.divider()
-        st.link_button("📸 Instagram", conf['instagram_url'], use_container_width=True)
+        
+        # Link para o Instagram da Igreja
+        st.link_button("📸 Instagram da Igreja", conf['instagram_url'], use_container_width=True)
+        
+        st.caption(f"Usuário: {st.session_state.email}")
 
     abas = st.tabs(["✨ Legendas", "🎬 Stories", "⚙️ Perfil"])
     t_gen, t_story, t_perf = abas
