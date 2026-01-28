@@ -4,7 +4,6 @@ from openai import OpenAI
 import urllib.parse
 import pandas as pd
 import time
-from datetime import datetime
 
 # 1. CONFIGURAÇÃO DE PÁGINA
 st.set_page_config(
@@ -73,24 +72,20 @@ if not st.session_state.logado:
 # ==========================================
 else:
     df_conf = carregar_configuracoes()
-    if st.session_state.perfil == "admin":
-        igreja_nome = st.sidebar.selectbox("Simular Igreja:", df_conf['nome_exibicao'].tolist())
-        conf = df_conf[df_conf['nome_exibicao'] == igreja_nome].iloc[0]
-    else:
-        conf = df_conf[df_conf['igreja_id'] == st.session_state.igreja_id].iloc[0]
+    conf = df_conf[df_conf['igreja_id'] == st.session_state.igreja_id].iloc[0] if st.session_state.perfil != "admin" else df_conf.iloc[0]
 
     cor_atual = st.session_state.cor_previa if st.session_state.cor_previa else str(conf['cor_tema'])
     if not cor_atual.startswith("#"): cor_atual = f"#{cor_atual}"
 
-    # --- 🛠️ CSS DE UNIFICAÇÃO DO BOTÃO FLUTUANTE ---
+    # --- 🛠️ CSS: BOTÃO UNIFICADO + RECUO LATERAL DA PÁGINA ---
     st.markdown(f"""
         <style>
-        /* 1. Mata TUDO no cabeçalho (Ícones, Fork, GitHub, Menu) */
+        /* 1. Remove ícones do topo */
         [data-testid="stHeaderActionElements"], .stAppDeployButton, #MainMenu {{
             display: none !important;
         }}
 
-        /* 2. UNIFICA O BOTÃO DE ABRIR (Quando fechada) */
+        /* 2. Botão de ABRIR (Centralizado na esquerda) */
         [data-testid="stSidebarCollapseButton"] {{
             position: fixed !important;
             top: 50% !important;
@@ -108,12 +103,11 @@ else:
             box-shadow: 5px 0px 15px rgba(0,0,0,0.3) !important;
         }}
 
-        /* 3. UNIFICA O BOTÃO DE FECHAR (Quando aberta) */
+        /* 3. Botão de FECHAR (Grudado na borda da sidebar aberta) */
         section[data-testid="stSidebar"] button {{
-            /* Alvos: Botão de fechar nativo do Streamlit */
             position: fixed !important;
             top: 50% !important;
-            left: 336px !important; /* largura padrão da sidebar */
+            left: 336px !important; 
             transform: translateY(-50%) !important;
             z-index: 1000001 !important;
             background-color: {cor_atual} !important;
@@ -124,13 +118,16 @@ else:
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
-            box-shadow: 5px 0px 15px rgba(0,0,0,0.3) !important;
         }}
-        
-        /* Esconde o cabeçalho original da sidebar para não duplicar botões */
-        [data-testid="stSidebarNav"] {{ padding-top: 2rem !important; }}
 
-        /* 4. Estilos Gerais */
+        /* 4. LEVAR TODA A PÁGINA MAIS PARA A LATERAL DIREITA */
+        .block-container {{
+            padding-left: 10% !important; /* Cria um corredor de segurança na esquerda */
+            padding-right: 5% !important;
+            max-width: 95% !important;
+        }}
+
+        /* Estilos de Cores */
         header[data-testid="stHeader"] {{ background-color: rgba(0,0,0,0) !important; border: none !important; }}
         footer {{ visibility: hidden !important; }}
         .stButton>button {{ background-color: {cor_atual}; color: white; border-radius: 8px; font-weight: bold; }}
@@ -145,11 +142,11 @@ else:
             st.rerun()
         st.divider()
         st.link_button("📸 Instagram", str(conf['instagram_url']), use_container_width=True)
-        
+
     # ABAS
     t_gen, t_story, t_perf = st.tabs(["✨ Legendas", "🎬 Stories", "⚙️ Perfil"])
 
-    # --- ABA 1: LEGENDAS (ARA) ---
+    # --- ABA LEGENDAS ---
     with t_gen:
         st.header("✨ Gerador de Conteúdo ARA")
         col1, col2 = st.columns(2)
@@ -168,7 +165,7 @@ else:
                 st.info(resultado)
                 st.link_button("📲 Enviar WhatsApp", f"https://api.whatsapp.com/send?text={urllib.parse.quote(resultado)}")
 
-    # --- ABA 2: STORIES ---
+    # --- ABA STORIES ---
     with t_story:
         st.header("🎬 Super Agente: Stories")
         ts = st.text_input("Tema dos Stories")
@@ -177,7 +174,7 @@ else:
                 res_s = chamar_super_agente(f"Crie 3 stories sobre {ts} para {conf['nome_exibicao']}.")
                 st.success(res_s)
 
-    # --- ABA 3: PERFIL ---
+    # --- ABA PERFIL ---
     with t_perf:
         st.header("⚙️ Personalização")
         nova_cor = st.color_picker("Cor da igreja:", cor_atual)
