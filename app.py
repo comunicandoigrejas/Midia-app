@@ -91,6 +91,7 @@ else:
         }}
 
         /* 2. BOTÃO QUANDO A SIDEBAR ESTÁ FECHADA (ABRIR) */
+        /* Localiza o botão dentro do cabeçalho da própria sidebar */
            [data-testid="stSidebar"] button[kind="header"] {{
             position: fixed !important;
             top: 50% !important;
