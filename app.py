@@ -130,6 +130,10 @@ else:
         st.link_button("📸 Instagram", str(conf['instagram_url']), use_container_width=True)
         st.caption(f"Logado como: {st.session_state.email}")
 
+    # --- DEFEINIÇÃO DAS ABAS
+    # Criamos 3 abas e damos nomes a elas
+    t_gen, t_story, t_perf = st.tabs(["✨ Legendas", "🎬 Stories", "⚙️ Perfil"])
+
   # --- ABA 1: GERADOR DE LEGENDAS ---
     with t_gen:
         st.header("✨ Gerador ARA (Super Agente)")
