@@ -27,12 +27,6 @@ st.markdown("""
         display: none !important;
     }
 
-    /* Mantém o cabeçalho transparente para o botão '>' aparecer */
-    header[data-testid="stHeader"] {
-        background-color: rgba(0,0,0,0) !important;
-        color: inherit !important;
-    }
-
     /* Remove o rodapé 'Made with Streamlit' */
     footer {
         visibility: hidden !important;
