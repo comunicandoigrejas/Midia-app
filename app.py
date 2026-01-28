@@ -162,7 +162,6 @@ else:
 
    with t_perf:
         st.header("⚙️ Personalização")
-        # Agora o cor_atual existe e o erro desaparece!
         nova_cor = st.color_picker("Cor da igreja:", cor_atual)
         if st.button("🖌️ Aplicar Cor"):
             st.session_state.cor_previa = nova_cor
