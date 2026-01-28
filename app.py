@@ -19,28 +19,28 @@ if "cor_previa" not in st.session_state: st.session_state.cor_previa = None
 for chave in ["perfil", "igreja_id", "email"]:
     if chave not in st.session_state: st.session_state[chave] = ""
 
-# --- 🛠️ CSS DE PROTEÇÃO MÁXIMA: ELIMINA CABEÇALHO E RODAPÉ ---
+# --- CSS PARA ESCONDER GITHUB E MANTER O BOTÃO DA SIDEBAR ---
 st.markdown("""
     <style>
-    /* Esconde o cabeçalho inteiro (remove Fork, GitHub, Menu e o botão >) */
-    [data-testid="stHeader"] {
+    /* Esconde os botões da direita (Fork, GitHub, View Source) */
+    [data-testid="stHeaderActionElements"] {
         display: none !important;
+    }
+
+    /* Esconde o menu de 3 pontos e o botão de Deploy */
+    .stAppDeployButton, #MainMenu {
+        display: none !important;
+    }
+
+    /* Mantém o cabeçalho transparente para o botão '>' aparecer */
+    header[data-testid="stHeader"] {
+        background-color: rgba(0,0,0,0) !important;
+        color: inherit !important;
     }
 
     /* Remove o rodapé 'Made with Streamlit' */
     footer {
         visibility: hidden !important;
-    }
-
-    /* Remove espaços inúteis e ajusta o topo para o conteúdo começar do zero */
-    .block-container {
-        padding-top: 0rem !important;
-        margin-top: -2rem !important;
-    }
-
-    /* Esconde elementos específicos caso o header tente reaparecer */
-    #MainMenu, .stAppDeployButton, [data-testid="stHeaderActionElements"] {
-        display: none !important;
     }
     </style>
     """, unsafe_allow_html=True)
