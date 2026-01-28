@@ -91,12 +91,13 @@ else:
         }}
 
         /* 2. BOTÃO QUANDO A SIDEBAR ESTÁ FECHADA (ABRIR) */
-        [data-testid="stSidebarCollapseButton"] {{
+           [data-testid="stSidebar"] button[kind="header"] {{
             position: fixed !important;
             top: 50% !important;
-            left: 0px !important;
+            /* Ele fica na borda direita da sidebar aberta */
+            left: 335px !important; 
             transform: translateY(-50%) !important;
-            z-index: 1000000 !important;
+            z-index: 1000001 !important;
             background-color: {cor_atual} !important;
             color: white !important;
             border-radius: 0 12px 12px 0 !important;
@@ -106,7 +107,6 @@ else:
             align-items: center !important;
             justify-content: center !important;
             box-shadow: 4px 0px 10px rgba(0,0,0,0.2) !important;
-            border: 1px solid rgba(255,255,255,0.2) !important;
         }}
 
         /* 3. BOTÃO QUANDO A SIDEBAR ESTÁ ABERTA (FECHAR) */
