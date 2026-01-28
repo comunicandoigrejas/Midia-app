@@ -176,11 +176,42 @@ else:
             else:
                 st.warning("⚠️ Preencha o Versículo e o Tema para continuar.")
 
-    # --- ABA PERFIL ---
-    if st.session_state.perfil != "admin":
-        with tab_perfil:
-            st.header("Configurações de Conta")
-            st.info(f"Igreja vinculada: {config['nome_exibicao']}")
-            st.write(f"E-mail: {st.session_state.email}")
-            st.divider()
-            st.write("Para alterar sua senha ou dados cadastrais, procure o administrador da Comunicando Igrejas.")
+    # --- ABA PERFIL / CONFIGURAÇÕES (VERSÃO 20 CORES) ---
+with tab_perfil:
+    st.header("🎨 Personalização da Identidade Visual")
+    st.write("Selecione uma cor abaixo para testar o visual do seu painel em tempo real.")
+
+    # Dicionário com as 20 cores
+    paleta = {
+        "Azul Catedral": "#2C3E50", "Vinho Clássico": "#7B241C", "Verde Oliva": "#556B2F",
+        "Roxo Imperial": "#4A235A", "Bronze": "#A0522D", "Grafite": "#212121",
+        "Azul Petróleo": "#0E4B5A", "Ultravioleta": "#6C5CE7", "Rosa Chá": "#E84393",
+        "Cinza Concreto": "#636E72", "Laranja Fogo": "#E17055", "Amarelo Glória": "#FBC531",
+        "Azul Royal": "#0984E3", "Vermelho Vivo": "#D63031", "Verde Menta": "#00B894",
+        "Areia": "#C2B280", "Terracota": "#E2725B", "Azul Céu": "#87CEEB",
+        "Lavanda": "#A29BFE", "Marrom Café": "#4E342E"
+    }
+
+    # Criando o Grid de Cores (5 colunas x 4 linhas)
+    colunas = st.columns(5)
+    for i, (nome, hex_code) in enumerate(paleta.items()):
+        with colunas[i % 5]:
+            if st.button(nome, key=hex_code):
+                st.session_state.cor_previa = hex_code
+                st.toast(f"Testando: {nome}")
+
+    st.divider()
+
+    # Seletor Livre e Prévia
+    cor_final = st.color_picker("Ajuste fino da cor:", st.session_state.get('cor_previa', config['cor_tema']))
+    
+    col_previa, col_acao = st.columns(2)
+    with col_previa:
+        if st.button("👁️ Aplicar Prévia Visual"):
+            aplicar_tema(cor_final)
+            st.success("Visual alterado! (Apenas para esta sessão)")
+
+    with col_acao:
+        # Botão que gera o link para o WhatsApp do suporte
+        msg_wa = urllib.parse.quote(f"Olá! Gostaria de definir a cor da {config['nome_exibicao']} como {cor_final}")
+        st.link_button("💾 Salvar Permanentemente", f"https://api.whatsapp.com/send?phone=SEUNUMERO&text={msg_wa}")
