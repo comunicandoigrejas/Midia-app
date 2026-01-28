@@ -113,40 +113,4 @@ else:
     abas = st.tabs(["✨ Legendas", "🎬 Stories", "📅 Calendário", "⚙️ Perfil"])
     t_gen, t_story, t_cal, t_perf = abas
 
-    # --- ABA CALENDÁRIO (FIXO) ---
-    with t_cal:
-        st.header("📅 Agendamento")
-        with st.expander("➕ Novo Post"):
-            with st.form("form_agendar_v3"):
-                dp = st.date_input("Data", datetime.now())
-                tp = st.text_input("Assunto")
-                if st.form_submit_button("Confirmar Agendamento"):
-                    dados_novos = pd.DataFrame([{
-                        "igreja_id": conf['igreja_id'], 
-                        "data": dp.strftime('%Y-%m-%d'), 
-                        "rede_social": "Geral", 
-                        "tema": tp, 
-                        "status": "Pendente"
-                    }])
-                    
-                    # Passamos a URL_PLANILHA explicitamente no método create
-                    try:
-                        conn.create(
-                            spreadsheet=URL_PLANILHA, 
-                            worksheet="calendario", 
-                            data=dados_novos
-                        )
-                        st.success("✅ Salvo com sucesso!")
-                        time.sleep(1)
-                        st.rerun()
-                    except Exception as e_save:
-                        st.error(f"Erro ao salvar: {e_save}")
-        
-        # Exibição
-        df_c = carregar_calendario()
-        df_filtrado = df_c[df_c['igreja_id'].astype(str) == str(conf['igreja_id'])]
-        st.dataframe(df_filtrado, use_container_width=True, hide_index=True)
-
-    with t_perf:
-        st.header("⚙️ Minha Conta")
-        st.write(f"Conectado como: **{st.session_state.email}**")
+   Erro ao salvar: Spreadsheet must be specified
