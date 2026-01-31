@@ -10,7 +10,7 @@ st.set_page_config(
     page_title="Comunicando Igrejas Pro", 
     page_icon="⚡", 
     layout="wide",
-    initial_sidebar_state="collapsed" # Inicia sem sidebar
+    initial_sidebar_state="collapsed"
 )
 
 # 2. INICIALIZAÇÃO DE ESTADO
@@ -19,38 +19,30 @@ if "cor_previa" not in st.session_state: st.session_state.cor_previa = None
 for chave in ["perfil", "igreja_id", "email"]:
     if chave not in st.session_state: st.session_state[chave] = ""
 
-# --- 🛠️ CSS ULTRA-CLEAN: REMOVE TUDO (SIDEBAR, HEADER E GITHUB) ---
+# --- 🛠️ CSS: TUDO CENTRALIZADO E OCULTANDO O HEADER DO GITHUB ---
 st.markdown("""
     <style>
-    /* 1. Esconde o Header inteiro (Fork, GitHub, Menu somem aqui) */
-    header[data-testid="stHeader"] {
-        display: none !important;
-    }
+    header[data-testid="stHeader"] { display: none !important; }
+    [data-testid="stSidebar"], [data-testid="collapsedControl"] { display: none !important; }
+    footer { visibility: hidden !important; }
 
-    /* 2. Esconde a barra lateral e o botão de controle nativo */
-    [data-testid="stSidebar"], [data-testid="collapsedControl"] {
-        display: none !important;
-    }
-
-    /* 3. Remove o rodapé */
-    footer {
-        visibility: hidden !important;
-    }
-
-    /* 4. Ajusta o conteúdo para começar do topo e centraliza o título */
     .block-container {
         padding-top: 2rem !important;
-        max-width: 80% !important;
+        max-width: 85% !important;
         margin: auto;
     }
 
     .church-title {
         text-align: center;
-        font-size: 2.5rem;
+        font-size: 2.2rem;
         font-weight: 800;
-        margin-bottom: 2rem;
+        margin-bottom: 1.5rem;
         font-family: 'Inter', sans-serif;
+        text-transform: uppercase;
+        letter-spacing: -1px;
     }
+    
+    .stTabs { display: flex; justify-content: center; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -61,7 +53,7 @@ try:
     ASSISTANT_ID = st.secrets["OPENAI_ASSISTANT_ID"]
     URL_PLANILHA = st.secrets["connections"]["gsheets"]["spreadsheet"]
 except Exception as e:
-    st.error("Erro de conexão. Verifique os Secrets.")
+    st.error("Erro nos Secrets.")
     st.stop()
 
 # --- FUNÇÕES SUPORTE ---
@@ -72,10 +64,9 @@ def chamar_super_agente(comando):
     thread = client.beta.threads.create()
     client.beta.threads.messages.create(thread_id=thread.id, role="user", content=comando)
     run = client.beta.threads.runs.create(thread_id=thread.id, assistant_id=ASSISTANT_ID)
-    with st.spinner("🧠 O Super Agente está processando..."):
-        while run.status != "completed":
-            time.sleep(1)
-            run = client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
+    while run.status != "completed":
+        time.sleep(1)
+        run = client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
     mensagens = client.beta.threads.messages.list(thread_id=thread.id)
     return mensagens.data[0].content[0].text.value
 
@@ -84,119 +75,125 @@ def chamar_super_agente(comando):
 # ==========================================
 if not st.session_state.logado:
     st.markdown("<h1 style='text-align: center;'>🚀 Comunicando Igrejas</h1>", unsafe_allow_html=True)
-    with st.container():
-        c1, c2, c3 = st.columns([1, 2, 1])
-        with c2:
-            with st.form("login"):
-                em = st.text_input("E-mail")
-                se = st.text_input("Senha", type="password")
-                if st.form_submit_button("Acessar Sistema", use_container_width=True):
-                    df_u = carregar_usuarios()
-                    u = df_u[(df_u['email'].str.lower() == em.lower()) & (df_u['senha'].astype(str) == str(se))]
-                    if not u.empty:
-                        if str(u.iloc[0]['status']).strip().lower() == 'ativo':
-                            st.session_state.logado = True
-                            st.session_state.perfil = str(u.iloc[0]['perfil']).strip().lower()
-                            st.session_state.igreja_id = u.iloc[0]['igreja_id']
-                            st.session_state.email = em
-                            st.rerun()
-                        else: st.error("🚫 Conta inativa.")
-                    else: st.error("❌ Dados incorretos.")
+    c1, c2, c3 = st.columns([1, 1.5, 1])
+    with c2:
+        with st.form("login"):
+            em = st.text_input("E-mail")
+            se = st.text_input("Senha", type="password")
+            if st.form_submit_button("Entrar no Painel", use_container_width=True):
+                df_u = carregar_usuarios()
+                u = df_u[(df_u['email'].str.lower() == em.lower()) & (df_u['senha'].astype(str) == str(se))]
+                if not u.empty and str(u.iloc[0]['status']).strip().lower() == 'ativo':
+                    st.session_state.logado, st.session_state.perfil, st.session_state.igreja_id, st.session_state.email = True, str(u.iloc[0]['perfil']).strip().lower(), u.iloc[0]['igreja_id'], em
+                    st.rerun()
+                else: st.error("Acesso negado.")
 
 # ==========================================
-# AMBIENTE LOGADO (SEM BARRA LATERAL)
+# AMBIENTE LOGADO
 # ==========================================
 else:
     df_conf = carregar_configuracoes()
-    # No modo sem sidebar, o Admin seleciona a igreja no topo se necessário
     if st.session_state.perfil == "admin":
-        conf_list = df_conf['nome_exibicao'].tolist()
-        escolha = st.selectbox("💎 Gestor Master: Selecione a Igreja", conf_list)
+        escolha = st.selectbox("💎 Gestor Master", df_conf['nome_exibicao'].tolist())
         conf = df_conf[df_conf['nome_exibicao'] == escolha].iloc[0]
     else:
         conf = df_conf[df_conf['igreja_id'] == st.session_state.igreja_id].iloc[0]
 
-    # Cor e Tema
     cor_atual = st.session_state.cor_previa if st.session_state.cor_previa else str(conf['cor_tema'])
     if not cor_atual.startswith("#"): cor_atual = f"#{cor_atual}"
     
+    # DNA Ministerial (Garante que não dê erro se a coluna estiver vazia)
+    dna = str(conf['dna_ministerial']) if 'dna_ministerial' in conf and pd.notnull(conf['dna_ministerial']) else "Linguagem cristã padrão."
+
     st.markdown(f"""
         <style>
-        .stButton>button {{ background-color: {cor_atual} !important; color: white !important; font-weight: bold; }}
-        .stTabs [aria-selected="true"] {{ background-color: {cor_atual} !important; color: white !important; }}
+        .stButton>button {{ background-color: {cor_atual} !important; color: white !important; }}
+        .stTabs [aria-selected="true"] {{ background-color: {cor_atual} !important; color: white !important; border-radius: 5px; }}
         .church-title {{ color: {cor_atual}; }}
         </style>
         <div class="church-title">⛪ {conf['nome_exibicao']}</div>
     """, unsafe_allow_html=True)
 
-    # NAVEGAÇÃO POR ABAS (Substitui a Sidebar)
-    t_gen, t_story, t_insta, t_perf, t_sair = st.tabs([
-        "✨ Legendas", 
-        "🎬 Stories", 
-        "📸 Instagram", 
-        "⚙️ Perfil", 
-        "🚪 Sair"
-    ])
+    t_gen, t_story, t_insta, t_perf, t_sair = st.tabs(["✨ Legendas", "🎬 Stories", "📸 Instagram", "⚙️ Perfil", "🚪 Sair"])
 
-    # --- ABA 1: LEGENDAS ---
+    # --- ABA LEGENDAS (AGORA COM DNA) ---
     with t_gen:
-        st.header("✨ Gerador de Conteúdo ARA")
-        c1, c2 = st.columns(2)
+        st.header("✨ Super Agente: Legendas ARA")
+        c1, col2 = st.columns(2)
         with c1:
-            rede = st.selectbox("Rede Social", ["Instagram", "Facebook", "WhatsApp"])
+            rede = st.selectbox("Rede Social", ["Instagram", "Facebook"])
             tom = st.selectbox("Tom", ["Inspirador", "Pentecostal", "Jovem", "Teológico"])
-        with c2:
-            ver = st.text_input("📖 Versículo Base (ARA)", placeholder="Ex: João 10:10")
+        with col2:
+            ver = st.text_input("📖 Versículo ARA")
             ht = st.text_input("🏷️ Hashtags Extras")
         
-        tema = st.text_area("📝 O que vamos criar hoje?")
-        if st.button("🚀 Gerar Legenda Premium"):
+        tema = st.text_area("📝 O que vamos postar?")
+        if st.button("🚀 Gerar Legenda"):
             if tema:
-                res = chamar_super_agente(f"Gere legenda para {rede}, tom {tom}, tema {tema}, versículo {ver}. ARA. Hashtags: {conf['hashtags_fixas']} {ht}")
+                # O DNA Ministerial é injetado aqui para personalizar a resposta
+                prompt = (f"Instrução Teológica/DNA da Igreja: {dna}. "
+                          f"Gere legenda para {rede}, tom {tom}, tema {tema}, versículo {ver}. ARA. "
+                          f"Hashtags: {conf['hashtags_fixas']} {ht}")
+                res = chamar_super_agente(prompt)
                 st.info(res)
-                st.link_button("📲 Enviar para WhatsApp", f"https://api.whatsapp.com/send?text={urllib.parse.quote(res)}")
+                st.link_button("📲 Enviar WhatsApp", f"https://api.whatsapp.com/send?text={urllib.parse.quote(res)}")
 
-    # --- ABA 2: STORIES ---
+    # --- ABA STORIES (AGORA COM DNA) ---
     with t_story:
         st.header("🎬 Roteiro de Stories")
         ts = st.text_input("Tema da sequência:")
         if st.button("🎬 Criar Roteiro"):
             if ts:
-                res_s = chamar_super_agente(f"Crie 3 stories sobre {ts} para {conf['nome_exibicao']}.")
-                st.success(res_s)
+                prompt_s = (f"Considere este DNA Ministerial: {dna}. "
+                            f"Crie 3 stories sobre {ts} para {conf['nome_exibicao']}. Use emojis e Bíblia ARA.")
+                st.success(chamar_super_agente(prompt_s))
 
-    # --- ABA 3: INSTAGRAM (Link Direto) ---
+    # --- ABA INSTAGRAM ---
     with t_insta:
-        st.header("📸 Link do Instagram")
-        st.write(f"Acesse o perfil oficial da **{conf['nome_exibicao']}**")
-        st.link_button("🚀 Abrir Instagram Agora", str(conf['instagram_url']), use_container_width=True)
+        st.header("📸 Central do Instagram")
+        c_a, c_b = st.columns(2)
+        with c_a: st.link_button("Ir para o Perfil", str(conf['instagram_url']), use_container_width=True)
+        with c_b: st.link_button("✨ Criar Nova Postagem", "https://www.instagram.com/create/select/", use_container_width=True)
 
-    # --- ABA 4: PERFIL ---
+    # --- ABA PERFIL (CAMPO PARA SALVAR O DNA) ---
     with t_perf:
-        st.header("⚙️ Configurações e Identidade")
-        nova_cor = st.color_picker("Personalizar cor do sistema:", cor_atual)
-        if st.button("🖌️ Salvar Nova Cor"):
-            st.session_state.cor_previa = nova_cor
-            st.rerun()
+        st.header("⚙️ Configurações da Igreja")
         
-        st.divider()
-        with st.form("senha_form"):
-            st.subheader("🔒 Alterar Senha")
-            s_at = st.text_input("Senha Atual", type="password")
-            s_nv = st.text_input("Nova Senha", type="password")
-            if st.form_submit_button("Atualizar Credenciais"):
-                df_u = carregar_usuarios()
-                idx = df_u.index[df_u['email'].str.lower() == st.session_state.email.lower()].tolist()
-                if idx and str(df_u.at[idx[0], 'senha']) == s_at:
-                    df_u.at[idx[0], 'senha'] = s_nv
-                    conn.update(spreadsheet=URL_PLANILHA, worksheet="usuarios", data=df_u)
-                    st.success("✅ Senha atualizada!")
-                else: st.error("❌ Senha atual incorreta.")
+        # Campo DNA Ministerial
+        st.subheader("🧬 DNA Ministerial")
+        dna_input = st.text_area("Descreva a visão, doutrina e estilo de comunicação da sua igreja:", value=dna, help="Ex: Igreja batista tradicional, foco em missões, linguagem para jovens, etc.")
+        
+        col_c, col_d = st.columns(2)
+        with col_c:
+            nova_cor = st.color_picker("Cor do sistema:", cor_atual)
+        
+        if st.button("💾 Salvar Configurações"):
+            df_full = carregar_configuracoes()
+            idx = df_full.index[df_full['igreja_id'] == st.session_state.igreja_id].tolist()
+            if idx:
+                df_full.at[idx[0], 'cor_tema'] = nova_cor
+                df_full.at[idx[0], 'dna_ministerial'] = dna_input
+                conn.update(spreadsheet=URL_PLANILHA, worksheet="configuracoes", data=df_full)
+                st.session_state.cor_previa = nova_cor
+                st.success("✅ DNA e Cor atualizados com sucesso!")
+                time.sleep(1)
+                st.rerun()
 
-    # --- ABA 5: SAIR ---
+        st.divider()
+        with st.form("senha"):
+            st.subheader("🔒 Segurança")
+            s_at, s_nv = st.text_input("Senha Atual", type="password"), st.text_input("Nova Senha", type="password")
+            if st.form_submit_button("Alterar Senha"):
+                df_u = carregar_usuarios()
+                idx_u = df_u.index[df_u['email'].str.lower() == st.session_state.email.lower()].tolist()
+                if idx_u and str(df_u.at[idx_u[0], 'senha']) == s_at:
+                    df_u.at[idx_u[0], 'senha'] = s_nv
+                    conn.update(spreadsheet=URL_PLANILHA, worksheet="usuarios", data=df_u)
+                    st.success("✅ Senha alterada!")
+                else: st.error("Senha atual incorreta.")
+
+    # --- ABA SAIR ---
     with t_sair:
-        st.header("🚪 Encerrar Sessão")
-        st.warning("Deseja realmente sair do sistema?")
-        if st.button("🔴 Confirmar Logout e Sair"):
+        if st.button("🔴 Confirmar Logout", use_container_width=True):
             st.session_state.clear()
             st.rerun()
