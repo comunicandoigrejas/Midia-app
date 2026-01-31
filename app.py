@@ -43,15 +43,6 @@ st.markdown("""
     }
     
     .stTabs { display: flex; justify-content: center; }
-    
-    /* Estilo para o Box do Briefing Visual */
-    .briefing-box {
-        background-color: rgba(255, 255, 255, 0.05);
-        border-left: 5px solid #FFD700;
-        padding: 15px;
-        border-radius: 5px;
-        margin-top: 10px;
-    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -80,7 +71,7 @@ def chamar_super_agente(comando):
     return mensagens.data[0].content[0].text.value
 
 # ==========================================
-# INTERFACE DE LOGIN (MANTIDA)
+# INTERFACE DE LOGIN
 # ==========================================
 if not st.session_state.logado:
     st.markdown("<h1 style='text-align: center;'>🚀 Comunicando Igrejas</h1>", unsafe_allow_html=True)
@@ -121,11 +112,19 @@ else:
         <div class="church-title">⛪ {conf['nome_exibicao']}</div>
     """, unsafe_allow_html=True)
 
-    t_gen, t_story, t_insta, t_perf, t_sair = st.tabs(["✨ Legendas", "🎬 Stories", "📸 Instagram", "⚙️ Perfil", "🚪 Sair"])
+    # NAVEGAÇÃO POR ABAS (Adicionada aba Briefing Visual)
+    t_gen, t_story, t_brief, t_insta, t_perf, t_sair = st.tabs([
+        "✨ Legendas", 
+        "🎬 Stories", 
+        "🎨 Briefing Visual", 
+        "📸 Instagram", 
+        "⚙️ Perfil", 
+        "🚪 Sair"
+    ])
 
-    # --- ABA LEGENDAS (AGORA COM BRIEFING VISUAL) ---
+    # --- ABA 1: LEGENDAS ---
     with t_gen:
-        st.header("✨ Super Agente: Conteúdo Completo")
+        st.header("✨ Super Agente: Legendas ARA")
         c1, col2 = st.columns(2)
         with c1:
             rede = st.selectbox("Rede Social", ["Instagram", "Facebook"])
@@ -133,50 +132,61 @@ else:
         with col2:
             ver = st.text_input("📖 Versículo ARA")
             ht = st.text_input("🏷️ Hashtags Extras")
-        
         tema = st.text_area("📝 O que vamos postar?")
-        if st.button("🚀 Gerar Conteúdo Premium"):
+        if st.button("🚀 Gerar Legenda"):
             if tema:
-                # PROMPT ATUALIZADO PARA PEDIR O BRIEFING
-                prompt = (f"DNA da Igreja: {dna_salvo}. "
-                          f"Gere uma legenda para {rede}, tom {tom}, tema {tema}, versículo {ver}. ARA. "
-                          f"Hashtags: {conf['hashtags_fixas']} {ht}. "
-                          f"IMPORTANTE: Ao final, adicione uma seção chamada '---BRIEFING---' "
-                          f"contendo uma sugestão detalhada de arte/imagem para o designer gráfico.")
-                
+                prompt = f"DNA da Igreja: {dna_salvo}. Legenda para {rede}, tom {tom}, tema {tema}, versículo {ver}. ARA. Hashtags: {conf['hashtags_fixas']} {ht}"
                 res = chamar_super_agente(prompt)
-                
-                # SEPARA A LEGENDA DO BRIEFING
-                if "---BRIEFING---" in res:
-                    legenda_final, briefing_final = res.split("---BRIEFING---")
-                else:
-                    legenda_final, briefing_final = res, "IA não gerou briefing para esta sugestão."
+                st.info(res)
+                st.link_button("📲 Enviar WhatsApp", f"https://api.whatsapp.com/send?text={urllib.parse.quote(res)}")
 
-                st.subheader("📝 Legenda Gerada:")
-                st.info(legenda_final.strip())
-                
-                st.subheader("🎨 Sugestão de Arte para o Designer:")
-                st.warning(briefing_final.strip())
-                
-                st.link_button("📲 Enviar para WhatsApp", f"https://api.whatsapp.com/send?text={urllib.parse.quote(legenda_final.strip())}")
-
-    # --- ABA STORIES (MANTIDA) ---
+    # --- ABA 2: STORIES ---
     with t_story:
         st.header("🎬 Roteiro de Stories")
         ts = st.text_input("Tema da sequência:")
         if st.button("🎬 Criar Roteiro"):
             if ts:
-                prompt_s = (f"DNA Ministerial: {dna_salvo}. Crie 3 stories sobre {ts} para {conf['nome_exibicao']}.")
-                st.success(chamar_super_agente(prompt_s))
+                st.success(chamar_super_agente(f"DNA Ministerial: {dna_salvo}. Crie 3 stories sobre {ts} para {conf['nome_exibicao']}."))
 
-    # --- ABA INSTAGRAM (MANTIDA) ---
+    # --- ABA 3: BRIEFING VISUAL (Página Exclusiva) ---
+    with t_brief:
+        st.header("🎨 Diretor de Criação: Briefing para o Designer")
+        st.write("Defina o tema e o formato para que o Super Agente crie a orientação visual.")
+        
+        col_b1, col_b2 = st.columns(2)
+        with col_b1:
+            tema_briefing = st.text_input("🎯 Tema da Postagem", placeholder="Ex: Culto de Jovens, Santa Ceia, Congresso...")
+        with col_b2:
+            formato_briefing = st.selectbox("🖼️ Formato do Post", ["Publicação Única (Feed)", "Carrossel de Informações", "Capa de Reels", "Cartaz de Evento"])
+        
+        if st.button("🎨 Gerar Briefing de Arte"):
+            if tema_briefing:
+                prompt_briefing = (
+                    f"Atue como um Diretor de Arte experiente. DNA da Igreja: {dna_salvo}. "
+                    f"Crie um briefing visual completo para o tema: '{tema_briefing}'. "
+                    f"O formato será: {formato_briefing}. "
+                    f"Sua resposta deve incluir: "
+                    f"1. Paleta de Cores sugerida. "
+                    f"2. Estilo de Fotografia ou Ilustração. "
+                    f"3. Sugestão de Tipografia (fontes). "
+                    f"4. Descrição detalhada do que deve conter na imagem (ou em cada tela se for carrossel). "
+                    f"5. Sentimento que a imagem deve passar."
+                )
+                res_brief = chamar_super_agente(prompt_briefing)
+                st.markdown("---")
+                st.subheader(f"💡 Sugestão Visual: {tema_briefing}")
+                st.warning(res_brief)
+            else:
+                st.error("Por favor, digite um tema para o briefing.")
+
+    # --- ABA 4: INSTAGRAM ---
     with t_insta:
         st.header("📸 Central do Instagram")
         c_a, c_b = st.columns(2)
         with c_a: st.link_button("Ir para o Perfil", str(conf['instagram_url']), use_container_width=True)
         with c_b: st.link_button("✨ Criar Nova Postagem", "https://www.instagram.com/create/select/", use_container_width=True)
 
-    # --- ABA PERFIL (MANTIDA) ---
+    # --- ABA 5: PERFIL ---
     with t_perf:
         st.header("⚙️ Configurações da Igreja")
         st.subheader("🧬 DNA Ministerial")
@@ -213,7 +223,7 @@ else:
                     st.success("✅ Senha alterada!")
                 else: st.error("Senha incorreta.")
 
-    # --- ABA SAIR (MANTIDA) ---
+    # --- ABA 6: SAIR ---
     with t_sair:
         if st.button("🔴 Confirmar Logout", use_container_width=True):
             st.session_state.clear()
