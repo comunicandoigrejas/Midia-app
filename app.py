@@ -1,4 +1,4 @@
-import streamlit as st
+import streamlit st
 from streamlit_gsheets import GSheetsConnection
 from openai import OpenAI
 import urllib.parse
@@ -112,14 +112,8 @@ else:
         <div class="church-title">⛪ {conf['nome_exibicao']}</div>
     """, unsafe_allow_html=True)
 
-    # NAVEGAÇÃO POR ABAS (Adicionada aba Briefing Visual)
     t_gen, t_story, t_brief, t_insta, t_perf, t_sair = st.tabs([
-        "✨ Legendas", 
-        "🎬 Stories", 
-        "🎨 Briefing Visual", 
-        "📸 Instagram", 
-        "⚙️ Perfil", 
-        "🚪 Sair"
+        "✨ Legendas", "🎬 Stories", "🎨 Briefing Visual", "📸 Instagram", "⚙️ Perfil", "🚪 Sair"
     ])
 
     # --- ABA 1: LEGENDAS ---
@@ -148,36 +142,40 @@ else:
             if ts:
                 st.success(chamar_super_agente(f"DNA Ministerial: {dna_salvo}. Crie 3 stories sobre {ts} para {conf['nome_exibicao']}."))
 
-    # --- ABA 3: BRIEFING VISUAL (Página Exclusiva) ---
+    # --- ABA 3: BRIEFING VISUAL (AGORA COM ENVIO WHATSAPP) ---
     with t_brief:
         st.header("🎨 Diretor de Criação: Briefing para o Designer")
-        st.write("Defina o tema e o formato para que o Super Agente crie a orientação visual.")
         
         col_b1, col_b2 = st.columns(2)
         with col_b1:
-            tema_briefing = st.text_input("🎯 Tema da Postagem", placeholder="Ex: Culto de Jovens, Santa Ceia, Congresso...")
+            tema_briefing = st.text_input("🎯 Tema da Postagem", placeholder="Ex: Culto de Jovens, Santa Ceia...")
         with col_b2:
-            formato_briefing = st.selectbox("🖼️ Formato do Post", ["Publicação Única (Feed)", "Carrossel de Informações", "Capa de Reels", "Cartaz de Evento"])
+            formato_briefing = st.selectbox("🖼️ Formato do Post", ["Publicação Única", "Carrossel", "Capa de Reels", "Cartaz"])
         
         if st.button("🎨 Gerar Briefing de Arte"):
             if tema_briefing:
                 prompt_briefing = (
-                    f"Atue como um Diretor de Arte experiente. DNA da Igreja: {dna_salvo}. "
-                    f"Crie um briefing visual completo para o tema: '{tema_briefing}'. "
-                    f"O formato será: {formato_briefing}. "
-                    f"Sua resposta deve incluir: "
-                    f"1. Paleta de Cores sugerida. "
-                    f"2. Estilo de Fotografia ou Ilustração. "
-                    f"3. Sugestão de Tipografia (fontes). "
-                    f"4. Descrição detalhada do que deve conter na imagem (ou em cada tela se for carrossel). "
-                    f"5. Sentimento que a imagem deve passar."
+                    f"Atue como Diretor de Arte. DNA da Igreja: {dna_salvo}. "
+                    f"Crie um briefing para o tema: '{tema_briefing}' no formato {formato_briefing}. "
+                    f"Inclua: Paleta de Cores, Estilo de Foto, Tipografia e Descrição por telas."
                 )
                 res_brief = chamar_super_agente(prompt_briefing)
+                
                 st.markdown("---")
-                st.subheader(f"💡 Sugestão Visual: {tema_briefing}")
+                st.subheader(f"💡 Sugestão para: {tema_briefing}")
                 st.warning(res_brief)
+                
+                # Prepara o texto para o WhatsApp incluindo os detalhes do evento/tema
+                texto_whatsapp = (
+                    f"*🎨 BRIEFING VISUAL - {conf['nome_exibicao']}*\n\n"
+                    f"*🎯 TEMA:* {tema_briefing}\n"
+                    f"*🖼️ FORMATO:* {formato_briefing}\n\n"
+                    f"*📋 ORIENTAÇÕES:* \n{res_brief}"
+                )
+                
+                st.link_button("📲 Enviar Briefing para o Designer", f"https://api.whatsapp.com/send?text={urllib.parse.quote(texto_whatsapp)}")
             else:
-                st.error("Por favor, digite um tema para o briefing.")
+                st.error("Digite o tema.")
 
     # --- ABA 4: INSTAGRAM ---
     with t_insta:
