@@ -102,8 +102,8 @@ else:
     cor_atual = st.session_state.cor_previa if st.session_state.cor_previa else str(conf['cor_tema'])
     if not cor_atual.startswith("#"): cor_atual = f"#{cor_atual}"
     
-    # DNA Ministerial (Garante que não dê erro se a coluna estiver vazia)
-    dna = str(conf['dna_ministerial']) if 'dna_ministerial' in conf and pd.notnull(conf['dna_ministerial']) else "Linguagem cristã padrão."
+    # Carregamos o DNA salvo na planilha para o uso interno da IA
+    dna_salvo = str(conf['dna_ministerial']) if 'dna_ministerial' in conf and pd.notnull(conf['dna_ministerial']) else "Linguagem cristã padrão."
 
     st.markdown(f"""
         <style>
@@ -116,7 +116,7 @@ else:
 
     t_gen, t_story, t_insta, t_perf, t_sair = st.tabs(["✨ Legendas", "🎬 Stories", "📸 Instagram", "⚙️ Perfil", "🚪 Sair"])
 
-    # --- ABA LEGENDAS (AGORA COM DNA) ---
+    # --- ABA LEGENDAS ---
     with t_gen:
         st.header("✨ Super Agente: Legendas ARA")
         c1, col2 = st.columns(2)
@@ -130,22 +130,22 @@ else:
         tema = st.text_area("📝 O que vamos postar?")
         if st.button("🚀 Gerar Legenda"):
             if tema:
-                # O DNA Ministerial é injetado aqui para personalizar a resposta
-                prompt = (f"Instrução Teológica/DNA da Igreja: {dna}. "
+                # A IA continua usando o dna_salvo da planilha
+                prompt = (f"DNA da Igreja: {dna_salvo}. "
                           f"Gere legenda para {rede}, tom {tom}, tema {tema}, versículo {ver}. ARA. "
                           f"Hashtags: {conf['hashtags_fixas']} {ht}")
                 res = chamar_super_agente(prompt)
                 st.info(res)
                 st.link_button("📲 Enviar WhatsApp", f"https://api.whatsapp.com/send?text={urllib.parse.quote(res)}")
 
-    # --- ABA STORIES (AGORA COM DNA) ---
+    # --- ABA STORIES ---
     with t_story:
         st.header("🎬 Roteiro de Stories")
         ts = st.text_input("Tema da sequência:")
         if st.button("🎬 Criar Roteiro"):
             if ts:
-                prompt_s = (f"Considere este DNA Ministerial: {dna}. "
-                            f"Crie 3 stories sobre {ts} para {conf['nome_exibicao']}. Use emojis e Bíblia ARA.")
+                prompt_s = (f"DNA Ministerial: {dna_salvo}. "
+                            f"Crie 3 stories sobre {ts} para {conf['nome_exibicao']}. Bíblia ARA.")
                 st.success(chamar_super_agente(prompt_s))
 
     # --- ABA INSTAGRAM ---
@@ -155,13 +155,18 @@ else:
         with c_a: st.link_button("Ir para o Perfil", str(conf['instagram_url']), use_container_width=True)
         with c_b: st.link_button("✨ Criar Nova Postagem", "https://www.instagram.com/create/select/", use_container_width=True)
 
-    # --- ABA PERFIL (CAMPO PARA SALVAR O DNA) ---
+    # --- ABA PERFIL (CAMPO SEMPRE EM BRANCO) ---
     with t_perf:
         st.header("⚙️ Configurações da Igreja")
         
-        # Campo DNA Ministerial
+        # O valor inicial (value) é vazio "", mas deixamos um placeholder para orientação
         st.subheader("🧬 DNA Ministerial")
-        dna_input = st.text_area("Descreva a visão, doutrina e estilo de comunicação da sua igreja:", value=dna, help="Ex: Igreja batista tradicional, foco em missões, linguagem para jovens, etc.")
+        dna_input = st.text_area(
+            "Atualizar DNA Ministerial:", 
+            value="", 
+            placeholder="Digite aqui novas visões ou mude o estilo de escrita da IA...",
+            help="Ao salvar, esta informação será usada pelo Super Agente. O campo ficará em branco após salvar para futuras atualizações."
+        )
         
         col_c, col_d = st.columns(2)
         with col_c:
@@ -169,15 +174,20 @@ else:
         
         if st.button("💾 Salvar Configurações"):
             df_full = carregar_configuracoes()
-            idx = df_full.index[df_full['igreja_id'] == st.session_state.igreja_id].tolist()
+            # Usamos o ID da igreja que está sendo exibida (funciona para Admin também)
+            idx = df_full.index[df_full['igreja_id'] == conf['igreja_id']].tolist()
             if idx:
                 df_full.at[idx[0], 'cor_tema'] = nova_cor
-                df_full.at[idx[0], 'dna_ministerial'] = dna_input
+                
+                # SÓ ATUALIZA O DNA SE O USUÁRIO ESCREVEU ALGO
+                if dna_input.strip():
+                    df_full.at[idx[0], 'dna_ministerial'] = dna_input
+                
                 conn.update(spreadsheet=URL_PLANILHA, worksheet="configuracoes", data=df_full)
                 st.session_state.cor_previa = nova_cor
-                st.success("✅ DNA e Cor atualizados com sucesso!")
+                st.success("✅ Configurações salvas! O campo de DNA foi limpo para o próximo uso.")
                 time.sleep(1)
-                st.rerun()
+                st.rerun() # Reinicia para limpar o campo visualmente
 
         st.divider()
         with st.form("senha"):
