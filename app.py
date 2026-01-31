@@ -1,4 +1,4 @@
-import streamlit st
+import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 from openai import OpenAI
 import urllib.parse
