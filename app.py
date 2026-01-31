@@ -43,6 +43,15 @@ st.markdown("""
     }
     
     .stTabs { display: flex; justify-content: center; }
+    
+    /* Estilo para o Box do Briefing Visual */
+    .briefing-box {
+        background-color: rgba(255, 255, 255, 0.05);
+        border-left: 5px solid #FFD700;
+        padding: 15px;
+        border-radius: 5px;
+        margin-top: 10px;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -71,7 +80,7 @@ def chamar_super_agente(comando):
     return mensagens.data[0].content[0].text.value
 
 # ==========================================
-# INTERFACE DE LOGIN
+# INTERFACE DE LOGIN (MANTIDA)
 # ==========================================
 if not st.session_state.logado:
     st.markdown("<h1 style='text-align: center;'>🚀 Comunicando Igrejas</h1>", unsafe_allow_html=True)
@@ -101,8 +110,6 @@ else:
 
     cor_atual = st.session_state.cor_previa if st.session_state.cor_previa else str(conf['cor_tema'])
     if not cor_atual.startswith("#"): cor_atual = f"#{cor_atual}"
-    
-    # DNA Salvo para uso interno
     dna_salvo = str(conf['dna_ministerial']) if 'dna_ministerial' in conf and pd.notnull(conf['dna_ministerial']) else "Linguagem cristã padrão."
 
     st.markdown(f"""
@@ -116,9 +123,9 @@ else:
 
     t_gen, t_story, t_insta, t_perf, t_sair = st.tabs(["✨ Legendas", "🎬 Stories", "📸 Instagram", "⚙️ Perfil", "🚪 Sair"])
 
-    # --- ABA LEGENDAS ---
+    # --- ABA LEGENDAS (AGORA COM BRIEFING VISUAL) ---
     with t_gen:
-        st.header("✨ Super Agente: Legendas ARA")
+        st.header("✨ Super Agente: Conteúdo Completo")
         c1, col2 = st.columns(2)
         with c1:
             rede = st.selectbox("Rede Social", ["Instagram", "Facebook"])
@@ -128,16 +135,32 @@ else:
             ht = st.text_input("🏷️ Hashtags Extras")
         
         tema = st.text_area("📝 O que vamos postar?")
-        if st.button("🚀 Gerar Legenda"):
+        if st.button("🚀 Gerar Conteúdo Premium"):
             if tema:
+                # PROMPT ATUALIZADO PARA PEDIR O BRIEFING
                 prompt = (f"DNA da Igreja: {dna_salvo}. "
-                          f"Gere legenda para {rede}, tom {tom}, tema {tema}, versículo {ver}. ARA. "
-                          f"Hashtags: {conf['hashtags_fixas']} {ht}")
+                          f"Gere uma legenda para {rede}, tom {tom}, tema {tema}, versículo {ver}. ARA. "
+                          f"Hashtags: {conf['hashtags_fixas']} {ht}. "
+                          f"IMPORTANTE: Ao final, adicione uma seção chamada '---BRIEFING---' "
+                          f"contendo uma sugestão detalhada de arte/imagem para o designer gráfico.")
+                
                 res = chamar_super_agente(prompt)
-                st.info(res)
-                st.link_button("📲 Enviar WhatsApp", f"https://api.whatsapp.com/send?text={urllib.parse.quote(res)}")
+                
+                # SEPARA A LEGENDA DO BRIEFING
+                if "---BRIEFING---" in res:
+                    legenda_final, briefing_final = res.split("---BRIEFING---")
+                else:
+                    legenda_final, briefing_final = res, "IA não gerou briefing para esta sugestão."
 
-    # --- ABA STORIES ---
+                st.subheader("📝 Legenda Gerada:")
+                st.info(legenda_final.strip())
+                
+                st.subheader("🎨 Sugestão de Arte para o Designer:")
+                st.warning(briefing_final.strip())
+                
+                st.link_button("📲 Enviar para WhatsApp", f"https://api.whatsapp.com/send?text={urllib.parse.quote(legenda_final.strip())}")
+
+    # --- ABA STORIES (MANTIDA) ---
     with t_story:
         st.header("🎬 Roteiro de Stories")
         ts = st.text_input("Tema da sequência:")
@@ -146,45 +169,34 @@ else:
                 prompt_s = (f"DNA Ministerial: {dna_salvo}. Crie 3 stories sobre {ts} para {conf['nome_exibicao']}.")
                 st.success(chamar_super_agente(prompt_s))
 
-    # --- ABA INSTAGRAM ---
+    # --- ABA INSTAGRAM (MANTIDA) ---
     with t_insta:
         st.header("📸 Central do Instagram")
         c_a, c_b = st.columns(2)
         with c_a: st.link_button("Ir para o Perfil", str(conf['instagram_url']), use_container_width=True)
         with c_b: st.link_button("✨ Criar Nova Postagem", "https://www.instagram.com/create/select/", use_container_width=True)
 
-    # --- ABA PERFIL (CAMPO EM BRANCO + RESUMO DISCRETO) ---
+    # --- ABA PERFIL (MANTIDA) ---
     with t_perf:
         st.header("⚙️ Configurações da Igreja")
-        
         st.subheader("🧬 DNA Ministerial")
-        dna_input = st.text_area(
-            "Atualizar DNA Ministerial:", 
-            value="", 
-            placeholder="Digite aqui para atualizar o estilo de escrita da IA...",
-            help="O texto salvo aqui molda como a IA escreve para sua denominação específica."
-        )
-        
-        # MENSAGEM DISCRETA LOGO ABAIXO DO CAMPO
+        dna_input = st.text_area("Atualizar DNA Ministerial:", value="", placeholder="Digite para atualizar...")
         resumo_dna = (dna_salvo[:120] + '...') if len(dna_salvo) > 120 else dna_salvo
         st.caption(f"**DNA atual:** {resumo_dna}")
         
         st.divider()
         col_c, col_d = st.columns(2)
-        with col_c:
-            nova_cor = st.color_picker("Cor do sistema:", cor_atual)
+        with col_c: nova_cor = st.color_picker("Cor do sistema:", cor_atual)
         
         if st.button("💾 Salvar Configurações"):
             df_full = carregar_configuracoes()
             idx = df_full.index[df_full['igreja_id'] == conf['igreja_id']].tolist()
             if idx:
                 df_full.at[idx[0], 'cor_tema'] = nova_cor
-                if dna_input.strip():
-                    df_full.at[idx[0], 'dna_ministerial'] = dna_input
-                
+                if dna_input.strip(): df_full.at[idx[0], 'dna_ministerial'] = dna_input
                 conn.update(spreadsheet=URL_PLANILHA, worksheet="configuracoes", data=df_full)
                 st.session_state.cor_previa = nova_cor
-                st.success("✅ Atualizado com sucesso!")
+                st.success("✅ Atualizado!")
                 time.sleep(1)
                 st.rerun()
 
@@ -201,7 +213,7 @@ else:
                     st.success("✅ Senha alterada!")
                 else: st.error("Senha incorreta.")
 
-    # --- ABA SAIR ---
+    # --- ABA SAIR (MANTIDA) ---
     with t_sair:
         if st.button("🔴 Confirmar Logout", use_container_width=True):
             st.session_state.clear()
