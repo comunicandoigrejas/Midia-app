@@ -21,7 +21,7 @@ if "email_salvo" not in st.session_state: st.session_state.email_salvo = ""
 for chave in ["perfil", "igreja_id", "email"]:
     if chave not in st.session_state: st.session_state[chave] = ""
 
-# --- 🛠️ CSS: CORREÇÃO DEFINITIVA PARA CELULAR EM PÉ (PORTRAIT) ---
+# --- 🛠️ CSS: AJUSTE DE POSICIONAMENTO PARA BAIXAR A TELA ---
 st.markdown("""
     <style>
     /* Remove elementos de cabeçalho nativos */
@@ -29,9 +29,9 @@ st.markdown("""
     [data-testid="stSidebar"], [data-testid="collapsedControl"] { display: none !important; }
     footer { visibility: hidden !important; }
 
-    /* Ajuste de Desktop (85% para ficar elegante) */
+    /* Ajuste de Desktop: Empurra a tela 3rem para baixo */
     .block-container {
-        padding-top: 1rem !important;
+        padding-top: 3rem !important; 
         max-width: 85% !important;
         margin: auto;
     }
@@ -46,23 +46,23 @@ st.markdown("""
         letter-spacing: -1px;
     }
 
-    /* 📱 AJUSTES AGRESSIVOS PARA CELULAR EM PÉ (PORTRAIT) */
+    /* 📱 AJUSTES PARA CELULAR EM PÉ (PORTRAIT) */
     @media screen and (max-width: 768px) {
-        /* Força a página a ocupar 100% da largura sem sobras laterais */
         .block-container {
             max-width: 100% !important;
             padding-left: 0.8rem !important;
             padding-right: 0.8rem !important;
-            padding-top: 0.5rem !important;
+            /* Empurra mais no celular para fugir do notch/barra do navegador */
+            padding-top: 5rem !important; 
         }
         
         .church-title {
-            font-size: 1.3rem !important; /* Título menor para não quebrar linha */
+            font-size: 1.3rem !important;
             margin-top: 0.5rem !important;
-            margin-bottom: 0.8rem !important;
+            margin-bottom: 1rem !important;
         }
 
-        /* Ajuste das Abas (Tabs) para caberem em telas estreitas */
+        /* Ajuste das Abas (Tabs) */
         .stTabs [data-baseweb="tab-list"] {
             gap: 2px !important;
             display: flex !important;
@@ -72,18 +72,17 @@ st.markdown("""
         .stTabs [data-baseweb="tab"] {
             padding-left: 4px !important;
             padding-right: 4px !important;
-            font-size: 0.75rem !important; /* Letra pequena o suficiente para o modo retrato */
+            font-size: 0.75rem !important;
             min-width: auto !important;
         }
 
-        /* Ajuste de inputs e botões para mobile */
         .stButton>button {
             width: 100% !important;
             font-size: 0.85rem !important;
         }
         
         input, select, textarea {
-            font-size: 16px !important; /* Evita o zoom automático do iPhone ao clicar */
+            font-size: 16px !important;
         }
     }
     </style>
@@ -118,7 +117,7 @@ def chamar_super_agente(comando):
 # ==========================================
 if not st.session_state.logado:
     st.markdown("<h1 style='text-align: center;'>🚀 Comunicando Igrejas</h1>", unsafe_allow_html=True)
-    c1, c2, c3 = st.columns([0.1, 0.8, 0.1]) # Ajustado para ocupar quase tudo no mobile
+    c1, c2, c3 = st.columns([0.05, 0.9, 0.05])
     with c2:
         with st.form("login"):
             em = st.text_input("E-mail", value=st.session_state.email_salvo)
