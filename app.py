@@ -1,4 +1,4 @@
-import streamlit as st  # Corrigido: adicionado o 'as'
+import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 from openai import OpenAI
 import urllib.parse
@@ -16,24 +16,26 @@ st.set_page_config(
 # 2. INICIALIZAÇÃO DE ESTADO
 if "logado" not in st.session_state: st.session_state.logado = False
 if "cor_previa" not in st.session_state: st.session_state.cor_previa = None
-if "email_salvo" not in st.session_state: st.session_state.email_salvo = "" # Para o "Lembrar E-mail"
+if "email_salvo" not in st.session_state: st.session_state.email_salvo = ""
 
 for chave in ["perfil", "igreja_id", "email"]:
     if chave not in st.session_state: st.session_state[chave] = ""
 
-# --- 🛠️ CSS: TUDO CENTRALIZADO E OCULTANDO O HEADER DO GITHUB ---
+# --- 🛠️ CSS: RESPONSIVIDADE PARA CELULAR EM PÉ (PORTRAIT) ---
 st.markdown("""
     <style>
     header[data-testid="stHeader"] { display: none !important; }
     [data-testid="stSidebar"], [data-testid="collapsedControl"] { display: none !important; }
     footer { visibility: hidden !important; }
 
+    /* Ajuste Geral do Container */
     .block-container {
-        padding-top: 2rem !important;
+        padding-top: 1rem !important;
         max-width: 85% !important;
         margin: auto;
     }
 
+    /* Título Adaptativo */
     .church-title {
         text-align: center;
         font-size: 2.2rem;
@@ -43,8 +45,27 @@ st.markdown("""
         text-transform: uppercase;
         letter-spacing: -1px;
     }
-    
-    .stTabs { display: flex; justify-content: center; }
+
+    /* 📱 AJUSTES EXCLUSIVOS PARA CELULAR (Telas menores que 768px) */
+    @media (max-width: 768px) {
+        .block-container {
+            max-width: 100% !important;
+            padding-left: 0.5rem !important;
+            padding-right: 0.5rem !important;
+        }
+        .church-title {
+            font-size: 1.4rem !important; /* Diminui o título no celular */
+            margin-bottom: 1rem !important;
+        }
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 5px !important;
+        }
+        .stTabs [data-baseweb="tab"] {
+            padding-left: 8px !important;
+            padding-right: 8px !important;
+            font-size: 0.8rem !important; /* Abas menores para caberem em linha */
+        }
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -73,36 +94,24 @@ def chamar_super_agente(comando):
     return mensagens.data[0].content[0].text.value
 
 # ==========================================
-# INTERFACE DE LOGIN (COM LEMBRAR E-MAIL)
+# INTERFACE DE LOGIN
 # ==========================================
 if not st.session_state.logado:
     st.markdown("<h1 style='text-align: center;'>🚀 Comunicando Igrejas</h1>", unsafe_allow_html=True)
-    c1, c2, c3 = st.columns([1, 1.5, 1])
+    c1, c2, c3 = st.columns([1, 2, 1]) # Aumentado o peso da coluna central
     with c2:
         with st.form("login"):
-            # O campo agora busca o valor salvo caso exista
             em = st.text_input("E-mail", value=st.session_state.email_salvo)
             se = st.text_input("Senha", type="password")
-            lembrar = st.checkbox("Lembrar meu e-mail", value=True if st.session_state.email_salvo else False)
-            
+            lembrar = st.checkbox("Lembrar e-mail", value=True if st.session_state.email_salvo else False)
             if st.form_submit_button("Entrar no Painel", use_container_width=True):
                 df_u = carregar_usuarios()
                 u = df_u[(df_u['email'].str.lower() == em.lower()) & (df_u['senha'].astype(str) == str(se))]
-                
                 if not u.empty and str(u.iloc[0]['status']).strip().lower() == 'ativo':
-                    st.session_state.logado = True
-                    st.session_state.perfil = str(u.iloc[0]['perfil']).strip().lower()
-                    st.session_state.igreja_id = u.iloc[0]['igreja_id']
-                    st.session_state.email = em
-                    
-                    # Salva ou remove o e-mail da memória baseado no checkbox
-                    if lembrar:
-                        st.session_state.email_salvo = em
-                    else:
-                        st.session_state.email_salvo = ""
-                        
+                    st.session_state.logado, st.session_state.perfil, st.session_state.igreja_id, st.session_state.email = True, str(u.iloc[0]['perfil']).strip().lower(), u.iloc[0]['igreja_id'], em
+                    st.session_state.email_salvo = em if lembrar else ""
                     st.rerun()
-                else: st.error("Acesso negado ou dados incorretos.")
+                else: st.error("Acesso negado.")
 
 # ==========================================
 # AMBIENTE LOGADO
@@ -121,124 +130,82 @@ else:
 
     st.markdown(f"""
         <style>
-        .stButton>button {{ background-color: {cor_atual} !important; color: white !important; }}
+        .stButton>button {{ background-color: {cor_atual} !important; color: white !important; font-size: 0.9rem; }}
         .stTabs [aria-selected="true"] {{ background-color: {cor_atual} !important; color: white !important; border-radius: 5px; }}
         .church-title {{ color: {cor_atual}; }}
         </style>
-        <div class="church-title">⛪ {conf['nome_exibicao']}</div>
+        <div class="church-title"> {conf['nome_exibicao']}</div>
     """, unsafe_allow_html=True)
 
     t_gen, t_story, t_brief, t_insta, t_perf, t_sair = st.tabs([
-        "✨ Legendas", "🎬 Stories", "🎨 Briefing Visual", "📸 Instagram", "⚙️ Perfil", "🚪 Sair"
+        "✨ Leg.", "🎬 Sto.", "🎨 Brief.", "📸 Insta", "⚙️ Perf.", "🚪 Sair"
     ])
 
-    # --- ABA 1: LEGENDAS ---
+    # --- ABA LEGENDAS ---
     with t_gen:
-        st.header("✨ Super Agente: Legendas ARA")
-        c1, col2 = st.columns(2)
-        with c1:
-            rede = st.selectbox("Rede Social", ["Instagram", "Facebook"])
-            tom = st.selectbox("Tom", ["Inspirador", "Pentecostal", "Jovem", "Teológico"])
-        with col2:
-            ver = st.text_input("📖 Versículo ARA")
-            ht = st.text_input("🏷️ Hashtags Extras")
-        tema = st.text_area("📝 O que vamos postar?")
-        if st.button("🚀 Gerar Legenda"):
+        st.header("✨ Legendas ARA")
+        rede = st.selectbox("Rede", ["Instagram", "Facebook"])
+        tom = st.selectbox("Tom", ["Inspirador", "Pentecostal", "Jovem", "Teológico"])
+        ver = st.text_input("📖 Versículo ARA")
+        ht = st.text_input("🏷️ Hashtags")
+        tema = st.text_area("📝 Tema do post")
+        if st.button("🚀 Gerar Legenda", use_container_width=True):
             if tema:
-                prompt = f"DNA da Igreja: {dna_salvo}. Legenda para {rede}, tom {tom}, tema {tema}, versículo {ver}. ARA. Hashtags: {conf['hashtags_fixas']} {ht}"
+                prompt = f"DNA: {dna_salvo}. Legenda {rede}, tom {tom}, tema {tema}, versículo {ver}. ARA. Hashtags: {conf['hashtags_fixas']} {ht}"
                 res = chamar_super_agente(prompt)
                 st.info(res)
-                st.link_button("📲 Enviar WhatsApp", f"https://api.whatsapp.com/send?text={urllib.parse.quote(res)}")
+                st.link_button("📲 Enviar WhatsApp", f"https://api.whatsapp.com/send?text={urllib.parse.quote(res)}", use_container_width=True)
 
-    # --- ABA 2: STORIES ---
+    # --- ABA STORIES ---
     with t_story:
-        st.header("🎬 Roteiro de Stories")
+        st.header("🎬 Roteiro Stories")
         ts = st.text_input("Tema da sequência:")
-        if st.button("🎬 Criar Roteiro"):
+        if st.button("🎬 Criar Roteiro", use_container_width=True):
             if ts:
-                st.success(chamar_super_agente(f"DNA Ministerial: {dna_salvo}. Crie 3 stories sobre {ts} para {conf['nome_exibicao']}."))
+                st.success(chamar_super_agente(f"DNA: {dna_salvo}. 3 stories sobre {ts} para {conf['nome_exibicao']}."))
 
-    # --- ABA 3: BRIEFING VISUAL ---
+    # --- ABA BRIEFING VISUAL ---
     with t_brief:
-        st.header("🎨 Diretor de Criação: Briefing para o Designer")
-        col_b1, col_b2 = st.columns(2)
-        with col_b1:
-            tema_briefing = st.text_input("🎯 Tema da Postagem", placeholder="Ex: Culto de Jovens, Santa Ceia...")
-        with col_b2:
-            formato_briefing = st.selectbox("🖼️ Formato do Post", ["Publicação Única", "Carrossel", "Capa de Reels", "Cartaz"])
-        
-        if st.button("🎨 Gerar Briefing de Arte"):
+        st.header("🎨 Briefing Visual")
+        tema_briefing = st.text_input("🎯 Tema", placeholder="Ex: Santa Ceia...")
+        formato_briefing = st.selectbox("🖼️ Formato", ["Único", "Carrossel", "Reels", "Cartaz"])
+        if st.button("🎨 Gerar Briefing", use_container_width=True):
             if tema_briefing:
-                prompt_briefing = (
-                    f"Atue como Diretor de Arte. DNA da Igreja: {dna_salvo}. "
-                    f"Crie um briefing para o tema: '{tema_briefing}' no formato {formato_briefing}. "
-                    f"Inclua: Paleta de Cores, Estilo de Foto, Tipografia e Descrição por telas."
-                )
+                prompt_briefing = f"Diretor de Arte. DNA: {dna_salvo}. Briefing tema: '{tema_briefing}' formato {formato_briefing}."
                 res_brief = chamar_super_agente(prompt_briefing)
-                st.markdown("---")
-                st.subheader(f"💡 Sugestão para: {tema_briefing}")
                 st.warning(res_brief)
-                
-                texto_whatsapp = (
-                    f"*🎨 BRIEFING VISUAL - {conf['nome_exibicao']}*\n\n"
-                    f"*🎯 TEMA:* {tema_briefing}\n"
-                    f"*🖼️ FORMATO:* {formato_briefing}\n\n"
-                    f"*📋 ORIENTAÇÕES:* \n{res_brief}"
-                )
-                st.link_button("📲 Enviar Briefing para o Designer", f"https://api.whatsapp.com/send?text={urllib.parse.quote(texto_whatsapp)}")
+                texto_wa = f"*🎨 BRIEFING - {conf['nome_exibicao']}*\n*🎯 TEMA:* {tema_briefing}\n*📋:* {res_brief}"
+                st.link_button("📲 Enviar ao Designer", f"https://api.whatsapp.com/send?text={urllib.parse.quote(texto_wa)}", use_container_width=True)
 
-    # --- ABA 4: INSTAGRAM ---
+    # --- ABA INSTAGRAM ---
     with t_insta:
-        st.header("📸 Central do Instagram")
-        c_a, c_b = st.columns(2)
-        with c_a: st.link_button("Ir para o Perfil", str(conf['instagram_url']), use_container_width=True)
-        with c_b: st.link_button("✨ Criar Nova Postagem", "https://www.instagram.com/create/select/", use_container_width=True)
+        st.header("📸 Instagram")
+        st.link_button("Ir para o Perfil", str(conf['instagram_url']), use_container_width=True)
+        st.link_button("✨ Criar Nova Postagem", "https://www.instagram.com/create/select/", use_container_width=True)
 
-    # --- ABA 5: PERFIL ---
+    # --- ABA PERFIL ---
     with t_perf:
-        st.header("⚙️ Configurações da Igreja")
-        st.subheader("🧬 DNA Ministerial")
-        dna_input = st.text_area("Atualizar DNA Ministerial:", value="", placeholder="Digite para atualizar...")
-        resumo_dna = (dna_salvo[:120] + '...') if len(dna_salvo) > 120 else dna_salvo
-        st.caption(f"**DNA atual:** {resumo_dna}")
-        
-        st.divider()
-        col_c, col_d = st.columns(2)
-        with col_c: nova_cor = st.color_picker("Cor do sistema:", cor_atual)
-        
-        if st.button("💾 Salvar Configurações"):
-            df_full = carregar_configuracoes()
-            idx = df_full.index[df_full['igreja_id'] == conf['igreja_id']].tolist()
+        st.header("⚙️ Perfil")
+        dna_input = st.text_area("Atualizar DNA:", value="", placeholder="Digite para atualizar...")
+        res_dna = (dna_salvo[:80] + '...') if len(dna_salvo) > 80 else dna_salvo
+        st.caption(f"**DNA atual:** {res_dna}")
+        nova_cor = st.color_picker("Cor do sistema:", cor_atual)
+        if st.button("💾 Salvar Configurações", use_container_width=True):
+            df_f = carregar_configuracoes()
+            idx = df_f.index[df_f['igreja_id'] == conf['igreja_id']].tolist()
             if idx:
-                df_full.at[idx[0], 'cor_tema'] = nova_cor
-                if dna_input.strip(): df_full.at[idx[0], 'dna_ministerial'] = dna_input
-                conn.update(spreadsheet=URL_PLANILHA, worksheet="configuracoes", data=df_full)
+                df_f.at[idx[0], 'cor_tema'] = nova_cor
+                if dna_input.strip(): df_f.at[idx[0], 'dna_ministerial'] = dna_input
+                conn.update(spreadsheet=URL_PLANILHA, worksheet="configuracoes", data=df_f)
                 st.session_state.cor_previa = nova_cor
                 st.success("✅ Atualizado!")
                 time.sleep(1)
                 st.rerun()
 
-        st.divider()
-        with st.form("senha"):
-            st.subheader("🔒 Segurança")
-            s_at, s_nv = st.text_input("Senha Atual", type="password"), st.text_input("Nova Senha", type="password")
-            if st.form_submit_button("Alterar Senha"):
-                df_u = carregar_usuarios()
-                idx_u = df_u.index[df_u['email'].str.lower() == st.session_state.email.lower()].tolist()
-                if idx_u and str(df_u.at[idx_u[0], 'senha']) == s_at:
-                    df_u.at[idx_u[0], 'senha'] = s_nv
-                    conn.update(spreadsheet=URL_PLANILHA, worksheet="usuarios", data=df_u)
-                    st.success("✅ Senha alterada!")
-                else: st.error("Senha incorreta.")
-
-    # --- ABA 6: SAIR (AJUSTADA PARA PRESERVAR E-MAIL) ---
+    # --- ABA SAIR ---
     with t_sair:
-        st.header("🚪 Encerrar Sessão")
         if st.button("🔴 Confirmar Logout", use_container_width=True):
-            # Guardamos o e-mail antes de limpar tudo
-            email_temp = st.session_state.email_salvo
+            em_temp = st.session_state.email_salvo
             st.session_state.clear()
-            # Devolvemos apenas o e-mail para o próximo login
-            st.session_state.email_salvo = email_temp
-            st.session_state.logado = False
+            st.session_state.email_salvo = em_temp
             st.rerun()
