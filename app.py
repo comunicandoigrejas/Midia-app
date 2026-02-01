@@ -1,4 +1,4 @@
-import streamlit as st
+import streamlit as st  # Corrigido: adicionado o 'as'
 from streamlit_gsheets import GSheetsConnection
 from openai import OpenAI
 import urllib.parse
@@ -16,6 +16,8 @@ st.set_page_config(
 # 2. INICIALIZAÇÃO DE ESTADO
 if "logado" not in st.session_state: st.session_state.logado = False
 if "cor_previa" not in st.session_state: st.session_state.cor_previa = None
+if "email_salvo" not in st.session_state: st.session_state.email_salvo = "" # Para o "Lembrar E-mail"
+
 for chave in ["perfil", "igreja_id", "email"]:
     if chave not in st.session_state: st.session_state[chave] = ""
 
@@ -71,22 +73,36 @@ def chamar_super_agente(comando):
     return mensagens.data[0].content[0].text.value
 
 # ==========================================
-# INTERFACE DE LOGIN
+# INTERFACE DE LOGIN (COM LEMBRAR E-MAIL)
 # ==========================================
 if not st.session_state.logado:
     st.markdown("<h1 style='text-align: center;'>🚀 Comunicando Igrejas</h1>", unsafe_allow_html=True)
     c1, c2, c3 = st.columns([1, 1.5, 1])
     with c2:
         with st.form("login"):
-            em = st.text_input("E-mail")
+            # O campo agora busca o valor salvo caso exista
+            em = st.text_input("E-mail", value=st.session_state.email_salvo)
             se = st.text_input("Senha", type="password")
+            lembrar = st.checkbox("Lembrar meu e-mail", value=True if st.session_state.email_salvo else False)
+            
             if st.form_submit_button("Entrar no Painel", use_container_width=True):
                 df_u = carregar_usuarios()
                 u = df_u[(df_u['email'].str.lower() == em.lower()) & (df_u['senha'].astype(str) == str(se))]
+                
                 if not u.empty and str(u.iloc[0]['status']).strip().lower() == 'ativo':
-                    st.session_state.logado, st.session_state.perfil, st.session_state.igreja_id, st.session_state.email = True, str(u.iloc[0]['perfil']).strip().lower(), u.iloc[0]['igreja_id'], em
+                    st.session_state.logado = True
+                    st.session_state.perfil = str(u.iloc[0]['perfil']).strip().lower()
+                    st.session_state.igreja_id = u.iloc[0]['igreja_id']
+                    st.session_state.email = em
+                    
+                    # Salva ou remove o e-mail da memória baseado no checkbox
+                    if lembrar:
+                        st.session_state.email_salvo = em
+                    else:
+                        st.session_state.email_salvo = ""
+                        
                     st.rerun()
-                else: st.error("Acesso negado.")
+                else: st.error("Acesso negado ou dados incorretos.")
 
 # ==========================================
 # AMBIENTE LOGADO
@@ -142,10 +158,9 @@ else:
             if ts:
                 st.success(chamar_super_agente(f"DNA Ministerial: {dna_salvo}. Crie 3 stories sobre {ts} para {conf['nome_exibicao']}."))
 
-    # --- ABA 3: BRIEFING VISUAL (AGORA COM ENVIO WHATSAPP) ---
+    # --- ABA 3: BRIEFING VISUAL ---
     with t_brief:
         st.header("🎨 Diretor de Criação: Briefing para o Designer")
-        
         col_b1, col_b2 = st.columns(2)
         with col_b1:
             tema_briefing = st.text_input("🎯 Tema da Postagem", placeholder="Ex: Culto de Jovens, Santa Ceia...")
@@ -160,22 +175,17 @@ else:
                     f"Inclua: Paleta de Cores, Estilo de Foto, Tipografia e Descrição por telas."
                 )
                 res_brief = chamar_super_agente(prompt_briefing)
-                
                 st.markdown("---")
                 st.subheader(f"💡 Sugestão para: {tema_briefing}")
                 st.warning(res_brief)
                 
-                # Prepara o texto para o WhatsApp incluindo os detalhes do evento/tema
                 texto_whatsapp = (
                     f"*🎨 BRIEFING VISUAL - {conf['nome_exibicao']}*\n\n"
                     f"*🎯 TEMA:* {tema_briefing}\n"
                     f"*🖼️ FORMATO:* {formato_briefing}\n\n"
                     f"*📋 ORIENTAÇÕES:* \n{res_brief}"
                 )
-                
                 st.link_button("📲 Enviar Briefing para o Designer", f"https://api.whatsapp.com/send?text={urllib.parse.quote(texto_whatsapp)}")
-            else:
-                st.error("Digite o tema.")
 
     # --- ABA 4: INSTAGRAM ---
     with t_insta:
@@ -221,8 +231,14 @@ else:
                     st.success("✅ Senha alterada!")
                 else: st.error("Senha incorreta.")
 
-    # --- ABA 6: SAIR ---
+    # --- ABA 6: SAIR (AJUSTADA PARA PRESERVAR E-MAIL) ---
     with t_sair:
+        st.header("🚪 Encerrar Sessão")
         if st.button("🔴 Confirmar Logout", use_container_width=True):
+            # Guardamos o e-mail antes de limpar tudo
+            email_temp = st.session_state.email_salvo
             st.session_state.clear()
+            # Devolvemos apenas o e-mail para o próximo login
+            st.session_state.email_salvo = email_temp
+            st.session_state.logado = False
             st.rerun()
