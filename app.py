@@ -167,6 +167,7 @@ else:
             if ts: st.success(chamar_super_agente(f"DNA: {dna_salvo}. 3 stories sobre {ts} para {conf['nome_exibicao']}."))
 
     # --- ABA BRIEFING VISUAL ---
+   # --- ABA 3: BRIEFING VISUAL ---
     with t_brief:
         st.header("🎨 Briefing Visual")
         tema_b = st.text_input("🎯 Tema", placeholder="Ex: Santa Ceia...")
@@ -175,9 +176,10 @@ else:
             if tema_b:
                 res_b = chamar_super_agente(f"Diretor de Arte. DNA: {dna_salvo}. Briefing tema: '{tema_b}' formato {formato_b}.")
                 st.warning(res_b)
-                texto_wa = f"*🎨 BRIEFING - {conf['nome_exibicao']}*\n*🎯 TEMA:* {tema_b}\n*📋:* {res_brief}"
+                
+                # CORREÇÃO AQUI: Mudamos res_brief para res_b
+                texto_wa = f"*🎨 BRIEFING - {conf['nome_exibicao']}*\n*🎯 TEMA:* {tema_b}\n*📋:* {res_b}"
                 st.link_button("📲 Enviar ao Designer", f"https://api.whatsapp.com/send?text={urllib.parse.quote(texto_wa)}", use_container_width=True)
-
     # --- ABA INSTAGRAM ---
     with t_insta:
         st.header("📸 Instagram")
