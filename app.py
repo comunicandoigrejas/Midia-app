@@ -21,15 +21,13 @@ if "email_salvo" not in st.session_state: st.session_state.email_salvo = ""
 for chave in ["perfil", "igreja_id", "email"]:
     if chave not in st.session_state: st.session_state[chave] = ""
 
-# --- 🛠️ CSS: AJUSTE DE POSICIONAMENTO PARA BAIXAR A TELA ---
+# --- 🛠️ CSS: RESPONSIVIDADE E VISIBILIDADE ---
 st.markdown("""
     <style>
-    /* Remove elementos de cabeçalho nativos */
     header[data-testid="stHeader"] { display: none !important; }
     [data-testid="stSidebar"], [data-testid="collapsedControl"] { display: none !important; }
     footer { visibility: hidden !important; }
 
-    /* Ajuste de Desktop: Empurra a tela 3rem para baixo */
     .block-container {
         padding-top: 3rem !important; 
         max-width: 85% !important;
@@ -46,43 +44,18 @@ st.markdown("""
         letter-spacing: -1px;
     }
 
-    /* 📱 AJUSTES PARA CELULAR EM PÉ (PORTRAIT) */
     @media screen and (max-width: 768px) {
         .block-container {
             max-width: 100% !important;
             padding-left: 0.8rem !important;
             padding-right: 0.8rem !important;
-            /* Empurra mais no celular para fugir do notch/barra do navegador */
             padding-top: 5rem !important; 
         }
-        
-        .church-title {
-            font-size: 1.3rem !important;
-            margin-top: 0.5rem !important;
-            margin-bottom: 1rem !important;
-        }
-
-        /* Ajuste das Abas (Tabs) */
-        .stTabs [data-baseweb="tab-list"] {
-            gap: 2px !important;
-            display: flex !important;
-            justify-content: space-between !important;
-        }
-        
+        .church-title { font-size: 1.3rem !important; }
         .stTabs [data-baseweb="tab"] {
             padding-left: 4px !important;
             padding-right: 4px !important;
             font-size: 0.75rem !important;
-            min-width: auto !important;
-        }
-
-        .stButton>button {
-            width: 100% !important;
-            font-size: 0.85rem !important;
-        }
-        
-        input, select, textarea {
-            font-size: 16px !important;
         }
     }
     </style>
@@ -126,25 +99,31 @@ if not st.session_state.logado:
             if st.form_submit_button("Entrar no Painel", use_container_width=True):
                 df_u = carregar_usuarios()
                 u = df_u[(df_u['email'].str.lower() == em.lower()) & (df_u['senha'].astype(str) == str(se))]
-                if not u.empty and str(u.iloc[0]['status']).strip().lower() == 'ativo':
-                    st.session_state.logado, st.session_state.perfil, st.session_state.igreja_id, st.session_state.email = True, str(u.iloc[0]['perfil']).strip().lower(), u.iloc[0]['igreja_id'], em
-                    st.session_state.email_salvo = em if lembrar else ""
-                    st.rerun()
-                else: st.error("Acesso negado.")
+                
+                # ATUALIZADO: Verificação de status 'ativo'
+                if not u.empty:
+                    status_atual = str(u.iloc[0]['status']).strip().lower()
+                    if status_atual == 'ativo':
+                        st.session_state.logado, st.session_state.perfil, st.session_state.igreja_id, st.session_state.email = True, str(u.iloc[0]['perfil']).strip().lower(), u.iloc[0]['igreja_id'], em
+                        st.session_state.email_salvo = em if lembrar else ""
+                        st.rerun()
+                    elif status_atual == 'bloqueado':
+                        st.error("🚫 Esta conta está bloqueada. Entre em contato com o suporte.")
+                    else:
+                        st.error("⚠️ Conta em análise ou status desconhecido.")
+                else: st.error("Acesso negado ou dados incorretos.")
 
 # ==========================================
 # AMBIENTE LOGADO
 # ==========================================
 else:
     df_conf = carregar_configuracoes()
-    if st.session_state.perfil == "admin":
-        escolha = st.selectbox("💎 Gestor Master", df_conf['nome_exibicao'].tolist())
-        conf = df_conf[df_conf['nome_exibicao'] == escolha].iloc[0]
-    else:
-        conf = df_conf[df_conf['igreja_id'] == st.session_state.igreja_id].iloc[0]
+    conf = df_conf[df_conf['igreja_id'] == st.session_state.igreja_id].iloc[0]
 
-    cor_atual = st.session_state.cor_previa if st.session_state.cor_previa else str(conf['cor_tema'])
-    if not cor_atual.startswith("#"): cor_atual = f"#{cor_atual}"
+    # Validação da Cor
+    cor_raw = st.session_state.cor_previa if st.session_state.cor_previa else str(conf.get('cor_tema', '#1E90FF'))
+    cor_atual = cor_raw if isinstance(cor_raw, str) and cor_raw.startswith("#") and len(cor_raw) in [4, 7] else "#1E90FF"
+
     dna_salvo = str(conf['dna_ministerial']) if 'dna_ministerial' in conf and pd.notnull(conf['dna_ministerial']) else "Linguagem cristã padrão."
 
     st.markdown(f"""
@@ -156,22 +135,27 @@ else:
         <div class="church-title"> {conf['nome_exibicao']}</div>
     """, unsafe_allow_html=True)
 
-    t_gen, t_story, t_brief, t_insta, t_perf, t_sair = st.tabs([
-        "✨ Leg.", "🎬 Sto.", "🎨 Brief.", "📸 Insta", "⚙️ Perf.", "🚪 Sair"
-    ])
+    abas_nomes = ["✨ Leg.", "🎬 Sto.", "🎨 Brief.", "📸 Insta", "⚙️ Perf."]
+    if st.session_state.perfil == "admin": abas_nomes.append("👥 Usuários")
+    abas_nomes.append("🚪 Sair")
+    abas = st.tabs(abas_nomes)
+
+    t_gen, t_story, t_brief, t_insta, t_perf = abas[0], abas[1], abas[2], abas[3], abas[4]
+    if st.session_state.perfil == "admin":
+        t_user, t_sair = abas[5], abas[6]
+    else:
+        t_sair = abas[5]
 
     # --- ABA LEGENDAS ---
     with t_gen:
         st.header("✨ Legendas ARA")
         rede = st.selectbox("Rede", ["Instagram", "Facebook"])
         tom = st.selectbox("Tom", ["Inspirador", "Pentecostal", "Jovem", "Teológico"])
-        ver = st.text_input("📖 Versículo ARA")
-        ht = st.text_input("🏷️ Hashtags")
+        ver, ht = st.text_input("📖 Versículo ARA"), st.text_input("🏷️ Hashtags")
         tema = st.text_area("📝 Tema do post")
         if st.button("🚀 Gerar Legenda", use_container_width=True):
             if tema:
-                prompt = f"DNA: {dna_salvo}. Legenda {rede}, tom {tom}, tema {tema}, versículo {ver}. ARA. Hashtags: {conf['hashtags_fixas']} {ht}"
-                res = chamar_super_agente(prompt)
+                res = chamar_super_agente(f"DNA: {dna_salvo}. Legenda {rede}, tom {tom}, tema {tema}, versículo {ver}. ARA. Hashtags: {conf['hashtags_fixas']} {ht}")
                 st.info(res)
                 st.link_button("📲 Enviar WhatsApp", f"https://api.whatsapp.com/send?text={urllib.parse.quote(res)}", use_container_width=True)
 
@@ -180,20 +164,18 @@ else:
         st.header("🎬 Roteiro Stories")
         ts = st.text_input("Tema da sequência:")
         if st.button("🎬 Criar Roteiro", use_container_width=True):
-            if ts:
-                st.success(chamar_super_agente(f"DNA: {dna_salvo}. 3 stories sobre {ts} para {conf['nome_exibicao']}."))
+            if ts: st.success(chamar_super_agente(f"DNA: {dna_salvo}. 3 stories sobre {ts} para {conf['nome_exibicao']}."))
 
     # --- ABA BRIEFING VISUAL ---
     with t_brief:
         st.header("🎨 Briefing Visual")
-        tema_briefing = st.text_input("🎯 Tema", placeholder="Ex: Santa Ceia...")
-        formato_briefing = st.selectbox("🖼️ Formato", ["Único", "Carrossel", "Reels", "Cartaz"])
+        tema_b = st.text_input("🎯 Tema", placeholder="Ex: Santa Ceia...")
+        formato_b = st.selectbox("🖼️ Formato", ["Único", "Carrossel", "Reels", "Cartaz"])
         if st.button("🎨 Gerar Briefing", use_container_width=True):
-            if tema_briefing:
-                prompt_briefing = f"Diretor de Arte. DNA: {dna_salvo}. Briefing tema: '{tema_briefing}' formato {formato_briefing}."
-                res_brief = chamar_super_agente(prompt_briefing)
-                st.warning(res_brief)
-                texto_wa = f"*🎨 BRIEFING - {conf['nome_exibicao']}*\n*🎯 TEMA:* {tema_briefing}\n*📋:* {res_brief}"
+            if tema_b:
+                res_b = chamar_super_agente(f"Diretor de Arte. DNA: {dna_salvo}. Briefing tema: '{tema_b}' formato {formato_b}.")
+                st.warning(res_b)
+                texto_wa = f"*🎨 BRIEFING - {conf['nome_exibicao']}*\n*🎯 TEMA:* {tema_b}\n*📋:* {res_brief}"
                 st.link_button("📲 Enviar ao Designer", f"https://api.whatsapp.com/send?text={urllib.parse.quote(texto_wa)}", use_container_width=True)
 
     # --- ABA INSTAGRAM ---
@@ -206,8 +188,7 @@ else:
     with t_perf:
         st.header("⚙️ Perfil")
         dna_input = st.text_area("Atualizar DNA:", value="", placeholder="Digite para atualizar...")
-        res_dna = (dna_salvo[:80] + '...') if len(dna_salvo) > 80 else dna_salvo
-        st.caption(f"**DNA atual:** {res_dna}")
+        st.caption(f"**DNA atual:** {dna_salvo[:80]}...")
         nova_cor = st.color_picker("Cor do sistema:", cor_atual)
         if st.button("💾 Salvar Configurações", use_container_width=True):
             df_f = carregar_configuracoes()
@@ -220,6 +201,32 @@ else:
                 st.success("✅ Atualizado!")
                 time.sleep(1)
                 st.rerun()
+
+    # --- ABA GESTÃO DE USUÁRIOS (Sincronizada com Status 'Bloqueado') ---
+    if st.session_state.perfil == "admin":
+        with t_user:
+            st.header("👥 Gestão de Contas")
+            df_usuarios = carregar_usuarios()
+            for i, row in df_usuarios.iterrows():
+                if row['email'].lower() == st.session_state.email.lower(): continue
+                
+                status_atual = str(row['status']).lower().strip()
+                with st.expander(f"👤 {row['email']} ({status_atual.upper()})"):
+                    col_info, col_btn = st.columns([3, 1])
+                    with col_info:
+                        st.write(f"**Igreja ID:** {row['igreja_id']} | **Perfil:** {row['perfil']}")
+                    
+                    with col_btn:
+                        # ATUALIZADO: Lógica de alternância entre ativo/bloqueado
+                        novo_status = "bloqueado" if status_atual == "ativo" else "ativo"
+                        btn_label = "🔒 BLOQUEAR" if novo_status == "bloqueado" else "🔓 ATIVAR"
+                        
+                        if st.button(btn_label, key=f"user_{i}", use_container_width=True):
+                            df_usuarios.at[i, 'status'] = novo_status
+                            conn.update(spreadsheet=URL_PLANILHA, worksheet="usuarios", data=df_usuarios)
+                            st.success(f"Status de {row['email']} atualizado para {novo_status}!")
+                            time.sleep(0.5)
+                            st.rerun()
 
     # --- ABA SAIR ---
     with t_sair:
