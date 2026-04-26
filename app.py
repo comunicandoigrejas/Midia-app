@@ -4,6 +4,7 @@ from openai import OpenAI
 import urllib.parse
 import pandas as pd
 import time
+import streamlit.components.v1 as components
 
 # 1. CONFIGURAÇÃO DE PÁGINA
 st.set_page_config(
@@ -157,6 +158,30 @@ else:
             if tema:
                 res = chamar_super_agente(f"DNA: {dna_salvo}. Legenda {rede}, tom {tom}, tema {tema}, versículo {ver}. ARA. Hashtags: {conf['hashtags_fixas']} {ht}")
                 st.info(res)
+                # --- BOTÃO DE COPIAR (INÍCIO) ---
+                components.html(f"""
+                    <script>
+                    function copiarTexto() {{
+                        const texto = `{res.replace('`','\\`').replace('$','\\$')}`;
+                        navigator.clipboard.writeText(texto).then(() => {{
+                            alert("Legenda copiada com sucesso!");
+                        }});
+                    }}
+                    </script>
+                    <button onclick="copiarTexto()" style="
+                        background-color: {cor_atual};
+                        color: white;
+                        border: none;
+                        padding: 10px 20px;
+                        border-radius: 8px;
+                        width: 100%;
+                        font-weight: bold;
+                        cursor: pointer;
+                        font-family: sans-serif;
+                        font-size: 14px;
+                    ">📋 COPIAR LEGENDA</button>
+                """, height=60)
+                # --- BOTÃO DE COPIAR (FIM) ---
                 st.link_button("📲 Enviar WhatsApp", f"https://api.whatsapp.com/send?text={urllib.parse.quote(res)}", use_container_width=True)
 
     # --- ABA STORIES ---
